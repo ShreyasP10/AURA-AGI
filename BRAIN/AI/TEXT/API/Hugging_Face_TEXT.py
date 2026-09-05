@@ -42,9 +42,17 @@ def generate(
         str: The generated text based on the provided prompt and model.
     """
 
-    api_url = f"https://api-inference.huggingface.co/models/{model}"
-    headers = {"Authorization": f"Bearer {os.environ.get('HUGGING_FACE_READ')}"}
-    client = InferenceClient(api_url, headers=headers)
+    # FIX: api-inference.huggingface.co DNS NXDOMAIN (deprecated) -> use new HF Inference endpoint
+    # InferenceClient now auto-routes via https://api.huggingface.co; pass model id directly
+    api_key = os.environ.get('HUGGING_FACE_READ')
+    # Use new HF router: model id + provider auto, fallback to legacy if needed
+    try:
+        client = InferenceClient(model=model, token=api_key)  # new API (huggingface_hub>=0.23)
+    except TypeError:
+        # old API compat: api_url + headers
+        api_url = f"https://api.huggingface.co/models/{model}"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        client = InferenceClient(api_url, headers=headers)
 
     if chat_template == "mistral":
         formatted_prompt = f"[INST] {system_prompt} [/INST][INST] {prompt} [/INST]"

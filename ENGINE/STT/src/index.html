@@ -298,14 +298,22 @@
 
             const recognition = new SpeechRecognition();
             recognition.interimResults = true;
+            recognition.continuous = true; // keep listening for continuous speech
             recognition.lang = language_select.value; 
+            let silenceTimer = null;
+            const SILENCE_TIMEOUT = 2000; // 2 seconds silence before stop
 
             recognition.addEventListener('start', () => {
                 is_recording.innerHTML = "Recording: True";
             });
 
             recognition.addEventListener('end', () => {
-                is_recording.innerHTML = "Recording: False";
+                // auto-restart if stopped due to browser's short pause and not due to silence timeout
+                if (is_recording.innerHTML === "Recording: True" && speech) {
+                    try { recognition.start(); } catch(e) {}
+                } else {
+                    is_recording.innerHTML = "Recording: False";
+                }
             });
 
             recognition.addEventListener('result', e => {
@@ -323,6 +331,23 @@
                 .join('');
                 confidence_id.innerHTML = `Confidence: ${confidence}`;
                 console.log(confidence);
+
+                // reset silence timer on every result (speech detected)
+                clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => {
+                    speech = false;
+                    try { recognition.stop(); } catch(e) {}
+                    is_recording.innerHTML = "Recording: False";
+                }, SILENCE_TIMEOUT);
+            });
+
+            // also handle speech end with silence
+            recognition.addEventListener('speechend', () => {
+                clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => {
+                    speech = false;
+                    try { recognition.stop(); } catch(e) {}
+                }, SILENCE_TIMEOUT);
             });
 
             if (speech == true) {

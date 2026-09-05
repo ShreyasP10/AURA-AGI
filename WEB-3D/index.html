@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA — 3D Voice Companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{"imports": {"three": "https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div class="bg">
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+</div>
+
+<nav class="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <span>AURA</span><em>AGI</em>
+    <span class="ver">v1.0</span>
+  </div>
+  <div class="top-actions">
+    <button id="historyBtn" class="icon-btn" title="History"><i class="fa-solid fa-clock-rotate-left"></i> <span>History</span> <b id="historyCount">0</b></button>
+    <button id="settingsBtn" class="icon-btn"><i class="fa-solid fa-gear"></i></button>
+  </div>
+</nav>
+
+<main class="stage">
+  <canvas id="orbCanvas"></canvas>
+
+  <div class="center">
+    <div id="orbWrap" class="orb-wrap">
+      <canvas id="ringCanvas" width="360" height="360"></canvas>
+      <div class="orb-glow"></div>
+      <div class="orb-glow2"></div>
+      <div class="orb-ring"></div>
+      <div class="orb-ring2"></div>
+      <div class="orb-ring3"></div>
+    </div>
+
+    <div id="statusLabel" class="status"><i class="fa-solid fa-circle" style="color:var(--green);font-size:8px"></i> say <b>hi aura</b> to wake</div>
+    <div id="liveText" class="live-text"></div>
+    <div id="responseText" class="response-text"></div>
+    <div id="waveform" class="waveform"><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="hint"><i class="fa-solid fa-microphone"></i> <span id="hintText">tap mic → say "hi aura" → speak</span> <span style="opacity:0.5">•</span> <span>press <b>Space</b> or type below</span></div>
+    <div style="margin-top:12px;display:flex;gap:8px;pointer-events:auto">
+      <input id="textFallback" placeholder='or type "hi aura hello" and press Enter' style="flex:1;max-width:360px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.06);color:var(--text);font-size:13px">
+      <button id="sendTextBtn" class="small-btn" style="padding:10px 16px"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="micBtn" class="mic-btn" title="Tap or press Space"><i class="fa-solid fa-microphone"></i></button>
+    <div class="control-row">
+      <select id="voiceSelect" class="voice-select"></select>
+      <button id="clearBtn" class="small-btn"><i class="fa-solid fa-broom"></i> Clear</button>
+    </div>
+  </div>
+  <div class="footer">AURA-AGI • Made with ❤️ by Shreyas & Atharva • <span id="footerState">idle</span></div>
+</main>
+<div class="noise"></div>
+
+<!-- History Drawer -->
+<div id="historyDrawer" class="drawer">
+  <div class="drawer-head">
+    <h3><i class="fa-solid fa-clock-rotate-left"></i> Conversation History</h3>
+    <button id="closeHistory" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div id="historyList" class="history-list">
+    <div class="empty">No conversations yet — say "hi aura"</div>
+  </div>
+  <div class="drawer-foot">
+    <button id="exportBtn" class="primary-btn"><i class="fa-solid fa-download"></i> Export JSON</button>
+    <button id="clearHistoryBtn" class="danger-btn">Clear All</button>
+  </div>
+</div>
+<div id="overlay" class="overlay"></div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+  <div class="modal-card">
+    <h3><i class="fa-solid fa-sliders"></i> Settings</h3>
+    <label>Groq API Key (for real AI, optional — uses mock if empty)
+      <input id="groqKeyInput" type="password" placeholder="gsk_...">
+    </label>
+    <label>Silence timeout (ms)
+      <input id="silenceInput" type="number" value="2000" min="800" max="5000" step="200">
+    </label>
+    <label>Language
+      <select id="langSelect">
+        <option value="en-IN">English (India)</option>
+        <option value="en-US">English (US)</option>
+        <option value="hi-IN">Hindi</option>
+      </select>
+    </label>
+    <div class="modal-actions">
+      <button id="saveSettings" class="primary-btn">Save</button>
+      <button id="closeSettings" class="small-btn">Close</button>
+    </div>
+    <p class="muted">Tip: Say <b>"hi aura"</b> or <b>"hey aura"</b> — AURA wakes, listens until 2s silence, answers, then text fades but stays in History.</p>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

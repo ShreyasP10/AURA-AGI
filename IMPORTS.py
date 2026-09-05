@@ -11,8 +11,8 @@ from ENGINE.STT.DevsDoCode import SpeechToTextListener
 
 # from ENGINE.TTS.deepAI import speak
 # from ENGINE.TTS.DeepGram import speak
-from ENGINE.TTS.speechify import speak
-# from ENGINE.TTS.edge_tts import speak
+# from ENGINE.TTS.speechify import speak  # 429 Too Many Requests -> switch to edge_tts
+from ENGINE.TTS.edge_tts import speak
 # from ENGINE.TTS.stream_elements_api import speak
 # from ENGINE.TTS.ai_voice import speak, initiate_proxies
 # from ENGINE.TTS.hearling import Partial_Async_HearlingAudioGenerator

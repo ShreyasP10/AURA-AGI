@@ -23,14 +23,45 @@ def speak(text: str, voice: str = 'en-US-JennyNeural', subtitle_file: str = 'Sub
         - en-CA-LiamNeural: Confident and professional Canadian male voice (currently selected)
     """
 
+    if not text or not text.strip():
+        print("edge_tts: empty text, skipping TTS")
+        return
+    # sanitize quotes for shell
+    safe_text = text.replace('"', "'").replace("\n", " ")
+    mp3_file = f"{voice}.mp3"
     # Build the edge-tts command string, including voice, text, and output media
-    command = f"edge-tts --voice \"{voice}\" --text \"{text}\" --write-media \"{voice}.mp3\" --write-subtitles {subtitle_file}"
+    command = f'edge-tts --voice "{voice}" --text "{safe_text}" --write-media "{mp3_file}" --write-subtitles {subtitle_file}'
 
     # Execute the edge-tts command using the system shell
-    os.system(command)
-    playsound(f"{voice}.mp3")
-    os.remove(subtitle_file)
-    os.remove(f"{voice}.mp3")
+    ret = os.system(command)
+    if ret != 0 or not os.path.exists(mp3_file):
+        print(f"edge_tts failed (code {ret}), file missing: {mp3_file}")
+        if os.path.exists(subtitle_file):
+            try: os.remove(subtitle_file)
+            except: pass
+        return
+    try:
+        playsound(mp3_file)
+    except Exception as e:
+        print(f"playsound failed: {e} - trying pygame fallback")
+        try:
+            import pygame
+            pygame.mixer.init()
+            pygame.mixer.music.load(mp3_file)
+            pygame.mixer.music.play()
+            import time
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
+            pygame.mixer.quit()
+        except Exception as e2:
+            print(f"pygame fallback also failed: {e2}")
+    try:
+        if os.path.exists(subtitle_file):
+            os.remove(subtitle_file)
+        if os.path.exists(mp3_file):
+            os.remove(mp3_file)
+    except:
+        pass
 
 if __name__ == "__main__": 
     speak("Thank you for watching! I hope you found this video informative and helpful. If you did, please give it a thumbs up and consider subscribing to my channel for more videos like this")

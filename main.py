@@ -48,12 +48,13 @@ while True:
     speech = listener.listen()
 
     low = speech.lower()
-    if low.startswith("aura"):
-        speech = speech[len("aura"):].strip()
-    elif low.endswith("aura"):
-        speech = speech[:-len("aura")].strip()
+    is_wake = low.startswith("aura") or low.endswith("aura")
+    if is_wake:
+        if low.startswith("aura"):
+            speech = speech[len("aura"):].strip()
+        elif low.endswith("aura"):
+            speech = speech[:-len("aura")].strip()
         print("Updated Speech:", speech)
-
         response_img_or_text = concurrent.futures.ThreadPoolExecutor().submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.image_requests_v3)
         response_classifier = concurrent.futures.ThreadPoolExecutor().submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.complex_task_classifier_v6, stream=False)
         default_response = concurrent.futures.ThreadPoolExecutor().submit(deepInfra_TEXT.generate, history_manager.history, system_prompt=INSTRUCTIONS.human_response_v3_AVA, stream=False)
@@ -118,10 +119,23 @@ while True:
         # chat_response = Phind.generate(history_manager.history, system_prompt=INSTRUCTIONS.human_response_v3_AVA, stream=True)
         
         # chat_response = Pi_Ai.generate(speech, prints=False)
-        chat_response = Hugging_Face_TEXT.generate(speech)
+        # FIX: HF api-inference.huggingface.co DNS dead -> use Groq (verified openai/gpt-oss-20b)
+        try:
+            from groq import Groq
+            _groq = Groq(api_key=os.environ.get("GROQ_AI"))
+            chat_response = _groq.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content": speech}], max_tokens=512).choices[0].message.content
+            chat_response = chat_response.replace("\u202f", " ").replace("\u00a0", " ")
+        except Exception as _e:
+            print(f"Groq failed {_e}, fallback to HF")
+            chat_response = Hugging_Face_TEXT.generate(speech)
+        if not chat_response or not chat_response.strip():
+            chat_response = "Sorry, I didn't catch that. Could you say again?"
         print("\n\033[92mAURA >> {}\033[0m\n".format(chat_response))
         history_manager.update_file(speech, chat_response)
-        speak(chat_response)
+        try:
+            speak(chat_response)
+        except Exception as _tts_e:
+            print(f"TTS failed: {_tts_e}, continuing...")
         
         # engine.speak(chat_response, voice="hi-IN-Wavenet-D")
 

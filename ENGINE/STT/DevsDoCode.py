@@ -17,10 +17,15 @@ class SpeechToTextListener:
 
     def __init__(
             self, 
-            # website_path: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), r"ENGINE\STT\src\index.html"),
-            website_path: str = "https://realtime-stt-devs-do-code.netlify.app/", 
+            website_path: str = None,  # auto-detect local file with 2s silence fix
             language: str = "hi-IN",
-            wait_time: int = 10):
+            wait_time: int = 10,
+            silence_timeout: int = 2000):  # ms, for continuous listening
+        import os
+        if website_path is None:
+            # use local src/index.html with 2s silence fix (continuous=true)
+            local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "index.html")
+            website_path = "file:///" + local_path.replace("\\", "/")
         
         """Initializes the STT class with the given website path and language."""
         self.website_path = website_path

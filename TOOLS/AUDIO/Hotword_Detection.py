@@ -29,7 +29,19 @@ class HotwordDetector:
         self.deactivation_sound_path = deactivation_sound_path
         self.prints = prints
 
-        self.porcupine = pvporcupine.create(keywords=self.keywords)
+        import os
+        # FIX: pvporcupine 1.9.5 (no key) vs 4.x (requires access_key) — support both
+        _pk = os.environ.get("PICOVOICE_KEY") or os.environ.get("PORCUPINE_KEY")
+        try:
+            if _pk:
+                self.porcupine = pvporcupine.create(access_key=_pk, keywords=self.keywords)
+            else:
+                self.porcupine = pvporcupine.create(keywords=self.keywords)
+        except TypeError as _e:
+            # fallback for older/newer signature mismatch
+            if "access_key" in str(_e) and not _pk:
+                raise RuntimeError("pvporcupine 4.x requires PICOVOICE_KEY env (get free at console.picovoice.ai). Or pip install pvporcupine==1.9.5")
+            self.porcupine = pvporcupine.create(keywords=self.keywords)
         self.audio_interface = pyaudio.PyAudio()
         self.audio_stream = self.audio_interface.open(
             rate=self.porcupine.sample_rate,
