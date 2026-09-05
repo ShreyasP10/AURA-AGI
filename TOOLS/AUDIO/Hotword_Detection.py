@@ -29,16 +29,19 @@ class HotwordDetector:
         self.deactivation_sound_path = deactivation_sound_path
         self.prints = prints
 
-        import os
-        # FIX: pvporcupine 1.9.5 (no key) vs 4.x (requires access_key) — support both
+        import os, pathlib
+        # FIX: pvporcupine 1.9.5 (no key) vs 4.x (requires access_key) — support both + custom .ppn for aura
         _pk = os.environ.get("PICOVOICE_KEY") or os.environ.get("PORCUPINE_KEY")
+        _ppn = list(pathlib.Path("ASSETS/porcupine").glob("aura*.ppn")) if pathlib.Path("ASSETS/porcupine").exists() else []
         try:
-            if _pk:
+            if _ppn:
+                # custom aura model found — use keyword_paths
+                self.porcupine = pvporcupine.create(access_key=_pk, keyword_paths=[str(p) for p in _ppn]) if _pk else pvporcupine.create(keyword_paths=[str(p) for p in _ppn])
+            elif _pk:
                 self.porcupine = pvporcupine.create(access_key=_pk, keywords=self.keywords)
             else:
                 self.porcupine = pvporcupine.create(keywords=self.keywords)
         except TypeError as _e:
-            # fallback for older/newer signature mismatch
             if "access_key" in str(_e) and not _pk:
                 raise RuntimeError("pvporcupine 4.x requires PICOVOICE_KEY env (get free at console.picovoice.ai). Or pip install pvporcupine==1.9.5")
             self.porcupine = pvporcupine.create(keywords=self.keywords)

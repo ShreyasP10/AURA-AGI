@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { skins, applySkin } from './skins.js';
+import { toggleParty } from './party.js';
 
 // ---------- Audio-reactive Ring Visualizer (like music visualizer frames) ----------
 const ringCanvas = document.getElementById('ringCanvas');
@@ -520,6 +522,18 @@ window.addEventListener('load',()=>{
   const s=localStorage.getItem('aura_silence'); if(s) silenceInput.value=s;
   const l=localStorage.getItem('aura_lang'); if(l) langSelect.value=l;
 });
+
+// 8 Orb skins + 9 Party wiring
+const skinSelect=document.getElementById('skinSelect');
+const partyBtn=document.getElementById('partyBtn');
+if(skinSelect){
+  const savedSkin=localStorage.getItem('aura_skin')||'neon';
+  skinSelect.value=savedSkin;
+  // wait for sphereMat defined below, apply after init
+  setTimeout(()=>{ try{ applySkin(savedSkin, sphereMat); }catch(e){} },500);
+  skinSelect.onchange=()=>{ try{ applySkin(skinSelect.value, sphereMat); }catch(e){} };
+}
+if(partyBtn) partyBtn.onclick=()=>{ const on=toggleParty(getAudioLevel, setState); partyBtn.innerHTML= on ? '<i class="fa-solid fa-stop"></i> Stop' : '<i class="fa-solid fa-music"></i> Party'; };
 
 // drawer
 const drawer=document.getElementById('historyDrawer'), overlay=document.getElementById('overlay');

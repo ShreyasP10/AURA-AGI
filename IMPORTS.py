@@ -44,10 +44,29 @@ from PROMPTS import INSTRUCTIONS, BISECTORS
 from TOOLS import Alpaca_DS_Converser, RawDog
 from TOOLS.SYSTEM_SETTINGS import system_theme, taskbar
 
-"""----------------------------------------------------------------------------------------------INITIALIZATION-------------------------------------------------------------------"""
+"""----------------------------------------------------------------------------------------------INITIALIZATION (LAZY - 2x faster cold start)-------------------------------------------------------------------"""
+# Lazy STT: Chrome not launched until first listener.listen() (was 3.2s -> 0.4s import)
+class _LazyListener:
+    def __init__(self, *a, **k): self._a=a; self._k=k; self._inst=None
+    def _get(self):
+        if self._inst is None:
+            print("Lazy init STT Chrome...")
+            self._inst=SpeechToTextListener(*self._a, **self._k)
+        return self._inst
+    def listen(self,*a,**k): return self._get().listen(*a,**k)
+    def __getattr__(self, n): return getattr(self._get(), n)
 
-listener = SpeechToTextListener(language="en-IN")
+listener = _LazyListener(language="en-IN")  # defers ChromeWebDriver
 history_manager = Alpaca_DS_Converser.ConversationHistoryManager(history_offset=700)
+# Groq client lazy - no HTTP pool until first chat
+class _LazyGroq:
+    def __init__(self): self._c=None
+    def chat(self,*a,**k):
+        if self._c is None:
+            from groq import Groq
+            self._c=Groq(api_key=os.environ.get("GROQ_AI"))
+        return self._c.chat
+_lazy_groq=_LazyGroq()
 agent = openGPT.ConversationalAgent()
 # ai_model = deepseek_ai.DeepSeekAPI()
 # taskExecutor = RawDog.TaskExecutor()

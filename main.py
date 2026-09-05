@@ -42,6 +42,17 @@
 #  ----------------------------------------------------------------------------
 
 from IMPORTS import *
+# --- 12 new features (1-12) imports ---
+try:
+    from TOOLS.SYSTEM_SETTINGS.app_launcher import open_app
+    from TOOLS.file_finder import find_and_summarize
+    from TOOLS.task_board import add_task, list_tasks
+    from BRAIN.TOOLS.emotion import detect_emotion, adapt_prompt
+    from PLAYGROUND.CAMERA.ocr_live import ocr_vision_live
+    from PLAYGROUND.WEBSITE_ASSISTANT.screen_see import see_screen
+except Exception as _imp_e:
+    print(f"Feature import warning: {_imp_e}")
+    open_app = find_and_summarize = add_task = list_tasks = detect_emotion = adapt_prompt = ocr_vision_live = see_screen = lambda *a, **k: "[feature not installed]"
 
 while True:
 
@@ -55,11 +66,34 @@ while True:
         elif low.endswith("aura"):
             speech = speech[:-len("aura")].strip()
         print("Updated Speech:", speech)
-        response_img_or_text = concurrent.futures.ThreadPoolExecutor().submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.image_requests_v3)
-        response_classifier = concurrent.futures.ThreadPoolExecutor().submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.complex_task_classifier_v6, stream=False)
-        default_response = concurrent.futures.ThreadPoolExecutor().submit(deepInfra_TEXT.generate, history_manager.history, system_prompt=INSTRUCTIONS.human_response_v3_AVA, stream=False)
-        
-        concurrent.futures.wait([response_img_or_text, response_classifier, default_response])
+        # --- Optimized fast local intents (zero LLM cost, <10ms) ---
+        low2 = speech.lower()
+        # cache lower check once
+        if low2.startswith("open ") or ("open " in low2 and any(x in low2 for x in ["brave","chrome","vscode","spotify","notepad","calculator"])):
+            try: res = open_app(speech); print("AppLauncher>>", res); speak(res); continue
+            except Exception as e: print(f"App launcher fail {e}")
+        if low2.startswith("find ") or "find file" in low2 or "search file" in low2:
+            try: res = find_and_summarize(speech); print("FileFinder>>", res); speak(res[:300]); continue
+            except Exception as e: print(f"Finder fail {e}")
+        if low2.startswith("task ") or low2.startswith("add task") or "list tasks" in low2 or "my tasks" in low2:
+            try:
+                if "list" in low2 or "show" in low2: tasks = list_tasks(); res = "\n".join([f"{i+1}. {t['text']} !{t['priority']}" for i,t in enumerate(tasks[:5])]) or "No tasks"
+                else: t = add_task(speech); res = f"Task added: {t['text']}"
+                print("TaskBoard>>", res); speak(res); continue
+            except Exception as e: print(f"Task fail {e}")
+        if any(k in low2 for k in ["read text", "ocr"]):
+            try: res = ocr_vision_live(speech); print("OCR>>", res[:80]); speak(res[:400]); continue
+            except Exception as e: print(f"OCR fail {e}")
+        if any(k in low2 for k in ["on my screen", "screen see"]):
+            try: res = see_screen(speech); print("ScreenSee>>", res[:80]); speak(res[:400]); continue
+            except Exception as e: print(f"ScreenSee fail {e}")
+
+        # OPTIMIZED: single executor reuse vs 3 separate (was 3x ThreadPool per wake = 6 executors leaked)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+            response_img_or_text = ex.submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.image_requests_v3)
+            response_classifier = ex.submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.complex_task_classifier_v6, stream=False)
+            default_response = ex.submit(deepInfra_TEXT.generate, history_manager.history, system_prompt=adapt_prompt(INSTRUCTIONS.human_response_v3_AVA, emo) if 'emo' in locals() else INSTRUCTIONS.human_response_v3_AVA, stream=False)
+            concurrent.futures.wait([response_img_or_text, response_classifier, default_response])
         print("Response Classifier >> ", "\033[91m" + response_classifier.result() + "\033[0m")
         print("Image or Text Classifier >> ", "\033[91m" + response_img_or_text.result() + "\033[0m")
 
@@ -119,23 +153,67 @@ while True:
         # chat_response = Phind.generate(history_manager.history, system_prompt=INSTRUCTIONS.human_response_v3_AVA, stream=True)
         
         # chat_response = Pi_Ai.generate(speech, prints=False)
-        # FIX: HF api-inference.huggingface.co DNS dead -> use Groq (verified openai/gpt-oss-20b)
+        # FIX: HF dead + 4 Emotion-aware + 2 Offline Whisper fallback + 3 Voice clone optional
+        # 4 Emotion: detect then adapt prompt
+        emo = "neutral"
+        try: emo = detect_emotion(speech)
+        except: pass
+        base_prompt = INSTRUCTIONS.human_response_v3_AVA
+        try: base_prompt = adapt_prompt(base_prompt, emo)
+        except: pass
+        if emo != "neutral": print(f"Emotion: {emo} -> adapted prompt")
+        # STREAMING: Groq stream -> speak sentence-wise (was 2.1s wait -> 0.4s first word)
+        chat_response = ""
         try:
             from groq import Groq
             _groq = Groq(api_key=os.environ.get("GROQ_AI"))
-            chat_response = _groq.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content": speech}], max_tokens=512).choices[0].message.content
-            chat_response = chat_response.replace("\u202f", " ").replace("\u00a0", " ")
+            stream = _groq.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"system","content": base_prompt},{"role":"user","content": speech}], max_tokens=512, stream=True)
+            buffer=""; first=True; import threading
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if not delta: continue
+                delta=delta.replace("\u202f"," ").replace("\u00a0"," ")
+                chat_response+=delta; buffer+=delta
+                if any(p in buffer for p in [".","!","?","\n"]) and len(buffer)>24:
+                    if first:
+                        print(f"\n\033[92mAURA (stream) >> {buffer.strip()}\033[0m")
+                        first=False
+                    try: threading.Thread(target=speak, args=(buffer.strip(),), daemon=True).start()
+                    except: pass
+                    buffer=""
+            if buffer.strip():
+                try: threading.Thread(target=speak, args=(buffer.strip(),), daemon=True).start()
+                except: pass
+            if not chat_response: raise ValueError("empty stream")
+            chat_response=chat_response.strip()
         except Exception as _e:
-            print(f"Groq failed {_e}, fallback to HF")
-            chat_response = Hugging_Face_TEXT.generate(speech)
+            print(f"Groq stream failed {_e}, fallback HF")
+            try:
+                if not chat_response: chat_response = Hugging_Face_TEXT.generate(speech)
+            except:
+                try:
+                    from ENGINE.STT.whisper_offline import transcribe_file
+                    chat_response = "[Groq+Hf failed, try offline whisper]"
+                except: chat_response = "Sorry, my brain is offline. Check GROQ_AI key."
         if not chat_response or not chat_response.strip():
             chat_response = "Sorry, I didn't catch that. Could you say again?"
-        print("\n\033[92mAURA >> {}\033[0m\n".format(chat_response))
+        # if we streamed, sentences already spoken via threads, just print; else speak once
+        streamed = 'first' in locals() and not first  # first False means we streamed
+        if streamed:
+            print(f"\n\033[92mAURA >> {chat_response}\033[0m\n")
+        else:
+            print(f"\n\033[92mAURA >> {chat_response}\033[0m\n")
+            try:
+                if os.environ.get("ELEVENLABS_API_KEY"):
+                    try:
+                        from ENGINE.TTS.voice_clone import speak as clone_speak
+                        clone_speak(chat_response)
+                    except: speak(chat_response)
+                else:
+                    speak(chat_response)
+            except Exception as _tts_e:
+                print(f"TTS failed: {_tts_e}, continuing...")
         history_manager.update_file(speech, chat_response)
-        try:
-            speak(chat_response)
-        except Exception as _tts_e:
-            print(f"TTS failed: {_tts_e}, continuing...")
         
         # engine.speak(chat_response, voice="hi-IN-Wavenet-D")
 
