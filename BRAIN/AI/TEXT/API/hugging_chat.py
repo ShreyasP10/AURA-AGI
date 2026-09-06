@@ -87,7 +87,7 @@ class HuggingChat_RE:
                     if json_data['type'] == "stream":
                         if stream: print(json_data['token'], end="", flush=True)
                         complete_response += json_data['token']
-                except:
+                except Exception:
                     continue
 
         return complete_response

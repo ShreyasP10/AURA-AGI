@@ -60,7 +60,7 @@ def speak(text: str, voice: str = 'en-US-JennyNeural', subtitle_file: str = 'Sub
             os.remove(subtitle_file)
         if os.path.exists(mp3_file):
             os.remove(mp3_file)
-    except:
+    except Exception:
         pass
 
 if __name__ == "__main__": 

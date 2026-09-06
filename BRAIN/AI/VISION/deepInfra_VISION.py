@@ -61,8 +61,17 @@ def generate(user_message: str, image_path: str, system_prompt: str="Be a helpfu
         ],
         "stream": False
     }
-    response = requests.post(api_url, headers=headers, json=payload)
-    return response.json()['choices'][0]['message']['content']
+    response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+    try:
+        response.raise_for_status()
+        data = response.json()
+        if 'choices' not in data or not data['choices']:
+            return f"Vision error: no choices in {data}"
+        return data['choices'][0]['message']['content']
+    except requests.exceptions.RequestException as e:
+        return f"Vision API failed: {e} – {response.text[:200]}"
+    except (KeyError, IndexError) as e:
+        return f"Vision parse error: {e} – {response.text[:200]}"
 
 
 if __name__ == "__main__":

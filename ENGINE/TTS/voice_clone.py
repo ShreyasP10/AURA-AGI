@@ -18,7 +18,7 @@ try:
         audio=client.text_to_speech.convert(voice_id=vid, text=text, model_id="eleven_multilingual_v2")
         # play via pygame or eleven_play
         try: eleven_play(audio)
-        except: 
+        except Exception:
             import tempfile
             with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
                 for chunk in audio: f.write(chunk)

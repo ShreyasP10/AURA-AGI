@@ -96,7 +96,7 @@ def _stream_response(api_url, headers, payload, chunk_size):
                         for complete_sentence in sentences[:-1]:
                             yield complete_sentence.strip()
                         partial_sentence = sentences[-1] 
-                except: 
+                except Exception:
                     continue
         if partial_sentence:
             yield partial_sentence.strip()

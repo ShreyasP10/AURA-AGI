@@ -99,7 +99,7 @@ def generate(
                                 print(delta_content, end="", flush=True)
                             full_response += delta_content
 
-                except:
+                except Exception:
                     continue
         
         return full_response.strip()

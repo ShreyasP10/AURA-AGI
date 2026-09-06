@@ -35,16 +35,23 @@ def speech_to_text(prints: bool = True, model_path: str = r"ASSETS\Vosk\vosk-mod
     stream = audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8192)
     stream.start_stream()
 
-    while True:
-        data = stream.read(8192)
-        if recognizer.AcceptWaveform(data):
-            result = recognizer.Result()
-            result_dict = ast.literal_eval(result)
-            if 'text' in result_dict:
-                if prints: print("\rTranscript: " + result_dict['text'])
-                yield result_dict['text'].lower()
-        else:
-            if prints: print("\rSpeaking: " + recognizer.PartialResult().split('"')[-2], end='', flush=True)
+    try:
+        while True:
+            data = stream.read(8192, exception_on_overflow=False)
+            if recognizer.AcceptWaveform(data):
+                result = recognizer.Result()
+                try: result_dict = ast.literal_eval(result)
+                except Exception: continue
+                if 'text' in result_dict:
+                    if prints: print("\rTranscript: " + result_dict['text'])
+                    yield result_dict['text'].lower()
+            else:
+                if prints:
+                    try: print("\rSpeaking: " + recognizer.PartialResult().split('"')[-2], end='', flush=True)
+                    except Exception: pass
+    finally:
+        try: stream.stop_stream(); stream.close(); audio.terminate()
+        except Exception: pass
 
 if __name__ == "__main__":
     for speech in speech_to_text():

@@ -276,7 +276,7 @@ class ConversationalAgent:
                             print(content[printed_length:], end="", flush=True)
                         printed_length = len(content)
                         complete_response = content
-                except:
+                except Exception:
                     continue
 
         return complete_response
@@ -370,7 +370,7 @@ def generate(
                     if stream:
                         print(content[printed_length:], end="", flush=True)
                     printed_length, complete_response = len(content), content
-            except:
+            except Exception:
                 continue
 
     return complete_response

@@ -77,7 +77,7 @@ def generate(
             response += response_chunk
             if verbose:
                 print(response_chunk, end="", flush=True)
-    except:
+    except Exception:
         response = client.text_generation(
             formatted_prompt, 
             temperature=temperature, 

@@ -213,16 +213,19 @@ if(history.length>50) history=history.slice(-50);
 const historyCount=document.getElementById('historyCount');
 const historyList=document.getElementById('historyList');
 function saveHistory(){
-  // dedup consecutive + cap 50 + fix storage lag (debounced render)
-  if(history.length>1 && history[history.length-1].q===history[history.length-2].q && history[history.length-1].a===history[history.length-2].a){
-    history.pop(); // don't store exact repeat
-  }
+  if(history.length>1 && history[history.length-1].q===history[history.length-2].q && history[history.length-1].a===history[history.length-2].a) history.pop();
   if(history.length>50) history=history.slice(-50);
-  localStorage.setItem('aura_history',JSON.stringify(history));
+  try{ localStorage.setItem('aura_history',JSON.stringify(history)); }
+  catch(e){
+    if(e.name==='QuotaExceededError' || e.code===22){
+      history=history.slice(-20);
+      try{ localStorage.setItem('aura_history',JSON.stringify(history)); }catch(e2){ console.error('quota still exceeded',e2); }
+    } else console.error(e);
+  }
   historyCount.textContent=history.length;
-  // batched render to avoid lag
   requestAnimationFrame(renderHistory);
 }
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function renderHistory(){
   if(!history.length){historyList.innerHTML='<div class="empty"><i class="fa-solid fa-comments"></i><span>No conversations yet</span><small>Say "hi aura" and start talking — everything you say is saved here</small></div>';return;}
   historyList.innerHTML=history.slice().reverse().map((h,i)=>{
@@ -230,8 +233,8 @@ function renderHistory(){
     return `
     <div class="hist-card">
       <div class="meta"><span>${new Date(h.ts).toLocaleDateString()} • ${new Date(h.ts).toLocaleTimeString()}</span><span>#${idx+1} <button onclick="deleteHist(${idx})" class="mini-del" title="Delete"><i class="fa-solid fa-trash"></i></button></span></div>
-      <div class="q"><i class="fa-solid fa-user"></i> ${h.q}</div>
-      <div class="a"><i class="fa-solid fa-wand-magic-sparkles"></i> ${h.a}
+      <div class="q"><i class="fa-solid fa-user"></i> ${escapeHtml(h.q)}</div>
+      <div class="a"><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapeHtml(h.a)}
         <button onclick="replayHist(${idx})" class="mini-play" title="Replay"><i class="fa-solid fa-volume-high"></i></button>
       </div>
     </div>`;

@@ -65,7 +65,7 @@ def get_proxies(filename: str = filename, number_of_proxies: int = 100, prints: 
                 f.write(f"{working_proxy}\n")
               
 
-        except:
+        except Exception:
             if prints: print("Waiting for the Threads to Complete.......")
             time.sleep(5) 
             with open(filename, "a") as f:
@@ -133,7 +133,7 @@ def generate_tts_url(query: str, voice: int = 0, filename: str = filename, print
                         response_received = True
                         # Set the event to indicate a response has been received
                         response_event.set()
-        except:
+        except Exception:
             pass
         # print(f"Error with proxy {proxy}: {e}")
 

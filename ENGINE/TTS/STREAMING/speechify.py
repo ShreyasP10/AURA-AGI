@@ -34,7 +34,7 @@ class SpeechSynthesizer:
         """
         try: 
             os.remove(output_filename)
-        except: 
+        except Exception:
             pass
         
         url = "https://audio.api.speechify.com/generateAudioFiles"

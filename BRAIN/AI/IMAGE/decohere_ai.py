@@ -43,22 +43,24 @@ def generate(prompt: str, seed: int=1800647681, width: int=1024, height: int=576
         "safety_filter": safety_filter,
     }
 
-    # Make the POST request to the API
-    response = requests.post(url, headers=headers, json=payload)
-
-    # Check the response status code
+    # Make the POST request to the API with timeout + error handling
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+    except requests.exceptions.RequestException as e:
+        return False, f"Network error: {e}"
     if response.status_code == 200:
-        # Extract base64 encoded image data
-        base64_image_data = response.json().get('image', '')
-        # Decode base64 encoded image data to bytes
-        image_bytes = base64.b64decode(base64_image_data)
-        # Write the bytes to a file as an image
-        with open(image_path, "wb") as image_file:
-            image_file.write(image_bytes)
-        return True, image_path
+        try:
+            base64_image_data = response.json().get('image', '')
+            if not base64_image_data:
+                return False, f"No image in response: {response.text[:200]}"
+            image_bytes = base64.b64decode(base64_image_data)
+            with open(image_path, "wb") as image_file:
+                image_file.write(image_bytes)
+            return True, image_path
+        except Exception as e:
+            return False, f"Decode failed: {e} – {response.text[:200]}"
     else:
-        print(f"API call failed with status code {response.status_code}")
-        return False, response.text
+        return False, f"API {response.status_code}: {response.text[:200]}"
     
 # Example usage:
 if __name__ == "__main__":

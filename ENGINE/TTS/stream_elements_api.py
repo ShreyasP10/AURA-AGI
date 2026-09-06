@@ -24,7 +24,7 @@ def generate_audio(message: str, voice: str = "Brian"):
     try:
         result = requests.get(url=url, headers=headers)
         return result.content
-    except:
+    except Exception:
         return None
     
 def speak(message: str, voice: str = "Brian", folder: str = "", extension: str = ".mp3") -> Union[None, str]:

@@ -157,10 +157,10 @@ while True:
         # 4 Emotion: detect then adapt prompt
         emo = "neutral"
         try: emo = detect_emotion(speech)
-        except: pass
+        except Exception: pass # fixed bare except -> specific
         base_prompt = INSTRUCTIONS.human_response_v3_AVA
         try: base_prompt = adapt_prompt(base_prompt, emo)
-        except: pass
+        except Exception: pass # fixed bare except -> specific
         if emo != "neutral": print(f"Emotion: {emo} -> adapted prompt")
         # STREAMING: Groq stream -> speak sentence-wise (was 2.1s wait -> 0.4s first word)
         chat_response = ""
@@ -179,18 +179,18 @@ while True:
                         print(f"\n\033[92mAURA (stream) >> {buffer.strip()}\033[0m")
                         first=False
                     try: threading.Thread(target=speak, args=(buffer.strip(),), daemon=True).start()
-                    except: pass
+                    except Exception: pass # fixed bare except -> specific
                     buffer=""
             if buffer.strip():
                 try: threading.Thread(target=speak, args=(buffer.strip(),), daemon=True).start()
-                except: pass
+                except Exception: pass # fixed bare except -> specific
             if not chat_response: raise ValueError("empty stream")
             chat_response=chat_response.strip()
         except Exception as _e:
             print(f"Groq stream failed {_e}, fallback HF")
             try:
                 if not chat_response: chat_response = Hugging_Face_TEXT.generate(speech)
-            except:
+            except Exception as e:
                 try:
                     from ENGINE.STT.whisper_offline import transcribe_file
                     chat_response = "[Groq+Hf failed, try offline whisper]"

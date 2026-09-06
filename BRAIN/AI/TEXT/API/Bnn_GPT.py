@@ -65,9 +65,9 @@ def generate_query(query: str, url: Optional[str] = "https://bnngpt.com/", verbo
             try:
                 chunk_ = chunk[3:]
                 chunk_ = json.loads(chunk_)
-            except:
+            except Exception:
                 continue
-        except:
+        except Exception:
             continue
 
         try:
@@ -77,14 +77,14 @@ def generate_query(query: str, url: Optional[str] = "https://bnngpt.com/", verbo
                     if verbose:
                         print(str(chunk_['curr']), end="", flush=True)
                 response_counter -= 1
-        except:
+        except Exception:
             continue
 
         try:
             complete_response += str(chunk_['diff'][1])
             if verbose:
                 print(chunk_['diff'][1], end="", flush=True)
-        except:
+        except Exception:
             continue
 
     return complete_response
