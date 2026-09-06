@@ -1,1 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
 .env
+ASSETS/Vosk/
+ASSETS/porcupine/*.ppn
+ASSETS/conversation_history.json
+ASSETS/STREAM_AUDIOS/
+.venv/
+.idea/
+.vscode/
+

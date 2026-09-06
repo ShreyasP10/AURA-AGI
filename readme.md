@@ -150,49 +150,59 @@ All data lives locally in `ASSETS/` + `~/.aura/` equivalent, isolated per user �
 
 ## Repo Layout / Project Structure
 
+> **Fixed structure** — `__pycache__/` and `ASSETS/conversation_history.json` now ignored via `.gitignore`, `SETTING.py` → `SETTING.md` (doc), `WEB-3D/` added, 12 new features integrated.
+
 | Path | What it is |
 |------|------------|
-| `main.py` | Entry loop, wakeword `aura` dispatch `main.py:50` |
-| `IMPORTS.py` | Central aggregator — STT/TTS/BRAIN/TOOLS wiring |
-| `PROMPTS/` | `BISECTORS.py` classifiers, `INSTRUCTIONS.py` AVA persona, `SYSTEM.py` |
-| `BRAIN/AI/TEXT/API/` | 16 LLM adapters |
+| `main.py` | Entry loop, wakeword `aura` dispatch `main.py:50` + 12 intents (app/finder/task/ocr/screen) |
+| `IMPORTS.py` | Central aggregator — **lazy** `_LazyListener` (Chrome defers) + `edge_tts` |
+| `PROMPTS/` | `BISECTORS.py` classifiers, `INSTRUCTIONS.py` AVA persona (emotion-adapted), `SYSTEM.py` |
+| `BRAIN/AI/TEXT/API/` | 16 LLM adapters (fixed `Hugging_Face_TEXT.py` → `api.huggingface.co`) |
 | `BRAIN/AI/TEXT/LOCAL/` | `llama_CPP.py` offline |
 | `BRAIN/AI/VISION/` | `deepInfra_VISION.py` LLaVA |
 | `BRAIN/AI/IMAGE/` | `decohere_ai.py` |
-| `ENGINE/STT/` | `DevsDoCode.py`, `vosk_recog.py`, `NetHyTech.py`, `src/index.html` |
-| `ENGINE/TTS/` | `speechify.py`, `edge_tts.py`, `DeepGram.py` + `STREAMING/` |
-| `TOOLS/` | `Alpaca_DS_Converser.py`, `Hotword_Detection.py`, `RawDog.py`, `SYSTEM_SETTINGS/` |
-| `PLAYGROUND/` | `CAMERA/`, `WEBSITE_ASSISTANT/`, `ADB_CALL/`, `CLAP_NN/` |
-| `ASSETS/` | `SOUNDS/`, `Vosk/`, `conversation_history.json`, `STREAM_AUDIOS/` |
-| `requirements.txt` | Pinned deps (python-dotenv, groq, webscout…) |
+| `BRAIN/TOOLS/` | `groq_web_access.py`, `emotion.py` (4) |
+| `ENGINE/STT/` | `DevsDoCode.py` (lazy, 2s silence `src/index.html`), `vosk_recog.py`, `whisper_offline.py` (2), `src/index.html` |
+| `ENGINE/TTS/` | `edge_tts.py` (empty-guard + pygame fallback), `voice_clone.py` (3), `DeepGram.py` + `STREAMING/` |
+| `TOOLS/AUDIO/` | `Hotword_Detection.py` (dual 1.9.5/4.x + `.ppn`), `custom_wakeword.md` (1), `Interrupted_Playsound.py` |
+| `TOOLS/` | `Alpaca_DS_Converser.py` (700w window), `file_finder.py` (11), `task_board.py` (12), `RawDog.py` |
+| `TOOLS/SYSTEM_SETTINGS/` | `system_theme.py`, `taskbar.py`, `app_launcher.py` (10), `SETTING.md` (doc) |
+| `PLAYGROUND/` | `CAMERA/` (`camera_vision.py`, `ocr_live.py` (5), `gesture_control.py` (6)), `WEBSITE_ASSISTANT/` (`jenna_reader.py`, `screen_see.py` (7)), `ADB_CALL/`, `CLAP_NN/` |
+| `WEB-3D/` | **New** 3D site `index.html`, `app.js` (whisper fallback + ring visualizer), `style.css`, `skins.js` (8), `party.js` (9) |
+| `ASSETS/` | `SOUNDS/`, `Vosk/` *(ignored)*, `porcupine/` `aura*.ppn` *(ignored)*, `conversation_history.json` *(ignored)* |
+| `.gitignore` | `__pycache__/`, `*.pyc`, `.env`, `Vosk/`, `*.ppn`, `conversation_history.json` |
 
 <details>
 <summary>Full tree (click to expand)</summary>
 
 ```
 AURA-AGI/
-├── .env / .env.example
-├── main.py
-├── IMPORTS.py
+├── .env / .env.example  # real keys not committed
+├── .gitignore           # fixed: ignores __pycache__, Vosk, .ppn, history
+├── main.py              # lazy STT + 12 intents + streaming Groq 0.4s
+├── IMPORTS.py           # _LazyListener + _LazyGroq
 ├── requirements.txt
+├── readme.md            # this file (combined Notes+CropIQ+LifeLensIQ)
+├── LICENCE / CODE_OF_CONDUCT.md
 ├── ASSETS/
 │   ├── SOUNDS/activation_sound.wav
-│   ├── Vosk/vosk-model-small-en-us-0.15/
-│   ├── STREAM_AUDIOS/
-│   └── conversation_history.json
+│   ├── Vosk/  (ignored - download from vosk releases)
+│   ├── porcupine/aura_windows.ppn (ignored - custom wakeword)
+│   └── conversation_history.json (ignored - local memory)
 ├── BRAIN/
-│   ├── AI/TEXT/API/            # 16 adapters
+│   ├── AI/TEXT/API/            # 16 adapters + fixed HF host
 │   ├── AI/TEXT/LOCAL/llama_CPP.py
 │   ├── AI/TEXT/STREAM/
 │   ├── AI/VISION/deepInfra_VISION.py
 │   ├── AI/IMAGE/decohere_ai.py
-│   └── TOOLS/groq_web_access.py
+│   └── TOOLS/emotion.py + groq_web_access.py
 ├── ENGINE/
-│   ├── STT/DevsDoCode.py
-│   └── TTS/speechify.py, edge_tts.py, DeepGram.py + STREAMING/
-├── PROMPTS/BISECTORS.py, INSTRUCTIONS.py
-├── TOOLS/AUDIO/, SYSTEM_SETTINGS/, Alpaca_DS_Converser.py
-└── PLAYGROUND/CAMERA/, WEBSITE_ASSISTANT/, ADB_CALL/, CLAP_NN/
+│   ├── STT/ DevsDoCode.py, vosk_recog.py, whisper_offline.py, src/index.html (2s silence)
+│   └── TTS/ edge_tts.py, voice_clone.py, DeepGram.py + STREAMING/
+├── PROMPTS/ BISECTORS.py, INSTRUCTIONS.py
+├── TOOLS/ Alpaca_DS_Converser.py, file_finder.py, task_board.py, AUDIO/, SYSTEM_SETTINGS/
+├── PLAYGROUND/ CAMERA/ocr_live.py, gesture_control.py, WEBSITE_ASSISTANT/screen_see.py
+└── WEB-3D/ index.html, app.js, style.css, skins.js, party.js  # audio-reactive ring + Whisper fallback
 ```
 </details>
 
