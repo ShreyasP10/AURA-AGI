@@ -42,21 +42,59 @@
 #  ----------------------------------------------------------------------------
 
 from IMPORTS import *
-# --- 12 new features (1-12) imports ---
-try:
-    from TOOLS.SYSTEM_SETTINGS.app_launcher import open_app
-    from TOOLS.file_finder import find_and_summarize
-    from TOOLS.task_board import add_task, list_tasks
-    from BRAIN.TOOLS.emotion import detect_emotion, adapt_prompt
-    from PLAYGROUND.CAMERA.ocr_live import ocr_vision_live
-    from PLAYGROUND.WEBSITE_ASSISTANT.screen_see import see_screen
-except Exception as _imp_e:
-    print(f"Feature import warning: {_imp_e}")
-    open_app = find_and_summarize = add_task = list_tasks = detect_emotion = adapt_prompt = ocr_vision_live = see_screen = lambda *a, **k: "[feature not installed]"
+# --- 12 new features (1-12) imports (isolated so one broken file doesn't disable all) ---
+def _optional_import(importer, fallback):
+    try:
+        return importer()
+    except Exception as _e:
+        print(f"Feature import warning: {_e}")
+        return fallback
 
+_fallback = lambda *a, **k: "[feature not installed]"
+open_app = _optional_import(lambda: __import__("TOOLS.SYSTEM_SETTINGS.app_launcher", fromlist=["open_app"]).open_app, _fallback)
+find_and_summarize = _optional_import(lambda: __import__("TOOLS.file_finder", fromlist=["find_and_summarize"]).find_and_summarize, _fallback)
+try:
+    from TOOLS.task_board import add_task, list_tasks
+except Exception as _e:
+    print(f"Feature import warning: {_e}")
+    add_task = list_tasks = _fallback
+try:
+    from BRAIN.TOOLS.emotion import detect_emotion, adapt_prompt
+except Exception as _e:
+    print(f"Feature import warning: {_e}")
+    def detect_emotion(t): return "neutral"
+    def adapt_prompt(b, e): return b
+try:
+    from PLAYGROUND.CAMERA.ocr_live import ocr_vision_live
+except Exception as _e:
+    print(f"Feature import warning: {_e}")
+    ocr_vision_live = _fallback
+try:
+    from PLAYGROUND.WEBSITE_ASSISTANT.screen_see import see_screen
+except Exception as _e:
+    print(f"Feature import warning: {_e}")
+    see_screen = _fallback
+
+emo = "neutral"
+
+print("AURA ready. AURA_TEXT_MODE=1 uses keyboard (no mic/browser). AURA_BROWSER=chrome|brave, AURA_HEADLESS=0 for headed debug.")
 while True:
 
-    speech = listener.listen()
+    if os.environ.get("AURA_TEXT_MODE", "0") == "1":
+        try:
+            speech = input("\nYOU (type 'aura hello'): ").strip() or "aura hello"
+        except (EOFError, KeyboardInterrupt):
+            break
+    else:
+        try:
+            speech = listener.listen()
+        except Exception as e:
+            print(f"\nSTT failed ({e}). Tip: set AURA_TEXT_MODE=1 to type instead, or AURA_BROWSER=chrome")
+            print("Falling back to keyboard for this turn.")
+            try:
+                speech = input("\nYOU (type 'aura hello'): ").strip() or "aura hello"
+            except (EOFError, KeyboardInterrupt):
+                break
 
     low = speech.lower()
     is_wake = low.startswith("aura") or low.endswith("aura")
@@ -89,61 +127,89 @@ while True:
             except Exception as e: print(f"ScreenSee fail {e}")
 
         # OPTIMIZED: single executor reuse vs 3 separate (was 3x ThreadPool per wake = 6 executors leaked)
+        _classifier_prompt = getattr(BISECTORS, "complex_task_classifier_v6", BISECTORS.complex_task_classifier_v5)
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
             response_img_or_text = ex.submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.image_requests_v3)
-            response_classifier = ex.submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=BISECTORS.complex_task_classifier_v6, stream=False)
-            default_response = ex.submit(deepInfra_TEXT.generate, history_manager.history, system_prompt=adapt_prompt(INSTRUCTIONS.human_response_v3_AVA, emo) if 'emo' in locals() else INSTRUCTIONS.human_response_v3_AVA, stream=False)
+            response_classifier = ex.submit(deepInfra_TEXT.generate, [{"role": "user", "content": "Text to Classify -->" + speech}], system_prompt=_classifier_prompt, stream=False)
+            default_response = ex.submit(deepInfra_TEXT.generate, history_manager.history, system_prompt=adapt_prompt(INSTRUCTIONS.human_response_v3_AVA, emo), stream=False)
             concurrent.futures.wait([response_img_or_text, response_classifier, default_response])
-        print("Response Classifier >> ", "\033[91m" + response_classifier.result() + "\033[0m")
-        print("Image or Text Classifier >> ", "\033[91m" + response_img_or_text.result() + "\033[0m")
+        print("Response Classifier >> ", "\033[91m" + str(response_classifier.result()) + "\033[0m")
+        print("Image or Text Classifier >> ", "\033[91m" + str(response_img_or_text.result()) + "\033[0m")
 
-        if "yes" in response_img_or_text.result().lower():
+        _img_res = (response_img_or_text.result() or "")
+        _cls_res = (response_classifier.result() or "").lower()
+        _def_res = (default_response.result() or "Sorry, I could not think of a reply.")
+
+        if "yes" in _img_res.lower():
             speak("Sure Sir, Generating Your Image")
-            decohere_ai.generate(speech)
+            try:
+                ok, msg = decohere_ai.generate(speech)
+                print("Image>>", ok, msg)
+                speak("Image ready" if ok else f"Image failed: {msg}")
+            except Exception as e:
+                print(f"Image fail {e}")
+                speak("Image generation failed")
             continue
         
-        elif all(x in response_classifier.result().lower() for x in ("vision", "website", "call", "youtube")):
+        elif all(x in _cls_res for x in ("vision", "website", "call", "youtube")):
             print("\033[91mConfused with Classification. Using Default Response\033[0m")
-            speak(default_response.result())
+            speak(_def_res)
 
-        elif "system control" in response_classifier.result().lower():
+        elif "system control" in _cls_res:
             # Create a ThreadPoolExecutor and submit the speak function
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 speak_future = executor.submit(speak, "Sure Sir. Setting the Required Settings")
 
-                speech_lower = speech.lower()
-                if "dark" in speech_lower or "light" in speech_lower:
-                    theme = 0 if "dark" in speech_lower else 1
-                    system_theme.WindowsThemeManager().set_theme(theme)
-                elif any(alignment in speech_lower for alignment in ["left", "center", "centre", "right"]):
-                    alignment = 0 if "left" in speech_lower else 1
-                    taskbar.TaskbarCustomizer().set_alignment(alignment)
-                elif "temperature" in speech_lower:
-                    taskbar.TaskbarCustomizer().set_temperature_display(1)
+                try:
+                    speech_lower = speech.lower()
+                    if "dark" in speech_lower or "light" in speech_lower:
+                        theme = 0 if "dark" in speech_lower else 1
+                        system_theme.WindowsThemeManager().set_theme(theme)
+                    elif any(alignment in speech_lower for alignment in ["left", "center", "centre", "right"]):
+                        alignment = 0 if "left" in speech_lower else 1
+                        taskbar.TaskbarCustomizer().set_alignment(alignment)
+                    elif "temperature" in speech_lower:
+                        taskbar.TaskbarCustomizer().set_temperature_display(1)
+                    else:
+                        print("System control: no matching action")
+                except Exception as e:
+                    print(f"System control fail (Windows only?): {e}")
 
                 speak_future.result()
 
-        elif "vision" in response_classifier.result().lower():
-            concurrent.futures.ThreadPoolExecutor().submit(speak("Analysing, Please Wait"))
-            image_path = camera_vision.realtime_vision()
-            response_vison = deepInfra_VISION.generate(speech, system_prompt=INSTRUCTIONS.vison_realtime_v1, image_path=image_path)
-            print("AI>>", response_vison)
-            os.remove(image_path)
-            speak(response_vison)
+        elif "vision" in _cls_res:
+            try:
+                concurrent.futures.ThreadPoolExecutor().submit(speak, "Analysing, Please Wait")
+            except Exception: pass
+            try:
+                image_path = camera_vision.realtime_vision()
+                response_vison = deepInfra_VISION.generate(speech, system_prompt=INSTRUCTIONS.vison_realtime_v1, image_path=image_path)
+                print("AI>>", response_vison)
+                try:
+                    if os.path.exists(image_path): os.remove(image_path)
+                except Exception: pass
+                speak(response_vison)
+            except Exception as e:
+                print(f"Vision fail {e}")
+                speak("Vision failed. Check camera.")
 
-        elif "call" in response_classifier.result().lower():
+        elif "call" in _cls_res:
             speak("Sure Sir. Calling")
             # make_call.call()
 
-        elif "website" in response_classifier.result().lower():
-            site_markdown = jenna_reader.fetch_website_content(chrome_latest_url.get_latest_chrome_url())
-            response = openrouter.generate(f"METEDATA: {site_markdown}\n\nQUERY: {speech}", system_prompt="Keep you responses very short and concise")
-            speak(response, voice="Salli")
+        elif "website" in _cls_res:
+            try:
+                site_markdown = jenna_reader.fetch_website_content(chrome_latest_url.get_latest_chrome_url())
+                response = openrouter.generate(f"METEDATA: {site_markdown}\n\nQUERY: {speech}", system_prompt="Keep you responses very short and concise")
+                speak(response)
+            except Exception as e:
+                print(f"Website fail {e}")
+                speak("Website summarization failed.")
 
         else: 
             # taskExecutor.process_query(speech)
-            print("AI>>", default_response.result())
-            speak(default_response.result())
+            print("AI>>", _def_res)
+            speak(_def_res)
 
     else:
         history_manager.store_history(history_manager.history + [{"role": "user", "content": speech}])

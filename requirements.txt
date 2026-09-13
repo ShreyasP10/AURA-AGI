@@ -4,10 +4,28 @@ Requests==2.31.0
 playsound==1.2.2
 python-dotenv==1.0.1
 NetHyTech-STT==1.0
-groq==0.5.0
-edge-tts==6.1.11
+groq>=0.5.0
+edge-tts>=6.1.11
 googlesearch-python==1.2.4
-opencv-python==4.9.0.80
+opencv-python>=4.9.0.80
 pvporcupine==1.9.5
-pygame==2.5.2
-webscout==2.9
+pygame>=2.5.2
+webscout>=2.9
+# FIX 2026-09-13: missing deps that broke imports at runtime
+duckduckgo-search>=5.0
+win10toast>=0.9 ; sys_platform == 'win32'
+mss>=9.0
+pillow>=10.0
+pytesseract>=0.3.10
+pyautogui>=0.9.54
+selenium>=4.20
+huggingface_hub>=0.23
+openai>=1.0
+torch>=2.0
+torchaudio>=2.0
+sounddevice>=0.4.6
+scipy>=1.12
+mediapipe>=0.10
+faster-whisper>=1.0
+elevenlabs>=1.0
+python-dateutil>=2.9

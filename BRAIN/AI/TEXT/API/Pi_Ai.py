@@ -45,10 +45,15 @@ def generate(user_query: str, session_cookie: str = "AURA Team (Shreyas)", print
     
     if response.status_code in (401, 403):
         print("Assuming the Cookie is Expired.... Generating New Cookie.....")
-        cookie_value = list(requests.get("https://pi.ai").cookies)[0].value if requests.get("https://pi.ai").cookies else None
+        try:
+            _cookies = requests.get("https://pi.ai", timeout=10).cookies
+            cookie_value = list(_cookies)[0].value if _cookies else None
+        except Exception:
+            cookie_value = None
         print("New Cookie Generated: ", cookie_value)
-        generate(user_query, cookie_value)
-        # raise ValueError(f"Error: {response.text}, Status Code: {response.status_code}")
+        if cookie_value:
+            return generate(user_query, cookie_value, prints=prints)
+        return f"Pi auth failed: {response.status_code}"
 
     complete_response = ""
 

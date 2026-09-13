@@ -38,8 +38,9 @@ def generate(prompt: dict, system_prompt: str = "Be Helpful and Friendly", model
     }
 
     # Send POST request and stream response
-    chat_endpoint = "https://https.extension.phind.com/agent/"
-    response = requests.post(chat_endpoint, headers=headers, json=payload, stream=True)
+    # FIX: was "https://https.extension.phind.com/agent/" (double https) -> correct host
+    chat_endpoint = "https://extension.phind.com/agent/"
+    response = requests.post(chat_endpoint, headers=headers, json=payload, stream=True, timeout=30)
 
     # Collect streamed text content
     streaming_text = ""

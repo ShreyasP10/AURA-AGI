@@ -45,18 +45,19 @@ from TOOLS import Alpaca_DS_Converser, RawDog
 from TOOLS.SYSTEM_SETTINGS import system_theme, taskbar
 
 """----------------------------------------------------------------------------------------------INITIALIZATION (LAZY - 2x faster cold start)-------------------------------------------------------------------"""
-# Lazy STT: Chrome not launched until first listener.listen() (was 3.2s -> 0.4s import)
+# Lazy STT: Chrome/Brave not launched until first listener.listen() (was 3.2s -> 0.4s import)
 class _LazyListener:
     def __init__(self, *a, **k): self._a=a; self._k=k; self._inst=None
     def _get(self):
         if self._inst is None:
-            print("Lazy init STT Chrome...")
+            _browser = os.environ.get("AURA_BROWSER", "chrome")
+            print(f"Lazy init STT {_browser}...")
             self._inst=SpeechToTextListener(*self._a, **self._k)
         return self._inst
     def listen(self,*a,**k): return self._get().listen(*a,**k)
     def __getattr__(self, n): return getattr(self._get(), n)
 
-listener = _LazyListener(language="en-IN")  # defers ChromeWebDriver
+listener = _LazyListener(language="en-IN")  # defers WebDriver; set AURA_BROWSER=brave for Brave
 history_manager = Alpaca_DS_Converser.ConversationHistoryManager(history_offset=700)
 # Groq client lazy - no HTTP pool until first chat
 class _LazyGroq:

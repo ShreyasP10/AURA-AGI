@@ -1,7 +1,15 @@
 import requests
 import json
 import uuid
-from TOOLS.LE_CHAT_COOKIES.Cookie_Extractor import get_ory_session_cookie
+try:
+    from TOOLS.LE_CHAT_COOKIES.Cookie_Extractor import get_ory_session_cookie
+except ModuleNotFoundError:
+    # fallback when run as script / different cwd
+    try:
+        from LE_CHAT_COOKIES.Cookie_Extractor import get_ory_session_cookie  # type: ignore
+    except Exception:
+        def get_ory_session_cookie(*a, **k):
+            raise ImportError("Cookie_Extractor not found. Check TOOLS/LE_CHAT_COOKIES path.")
 from dotenv import load_dotenv
 import os
 

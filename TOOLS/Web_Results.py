@@ -4,8 +4,15 @@ from typing import List, Tuple, Union
 from dotenv import load_dotenv; load_dotenv()
 
 
-from googlesearch import search as google_search
-from duckduckgo_search import DDGS
+try:
+    from googlesearch import search as google_search
+except ImportError:
+    google_search = None  # pip install googlesearch-python
+
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    DDGS = None  # pip install duckduckgo-search
 
 import requests
 import json
@@ -46,6 +53,8 @@ def fetch_search_results(query: str, max_results: int = 5, verbose: bool = False
             print(f"\033[92mFetching results for sentence: {sentence} using {search_engine}\033[0m")
 
         if search_engine.lower() == 'google':
+            if google_search is None:
+                raise ImportError("google search needs: pip install googlesearch-python")
             results = google_search(sentence, num_results=max_results, advanced=True)
             for j, link in enumerate(results):
                 if verbose:
@@ -58,6 +67,8 @@ def fetch_search_results(query: str, max_results: int = 5, verbose: bool = False
                 sentence_descriptions.append(link.description)
 
         elif search_engine.lower() == 'duckduckgo':
+            if DDGS is None:
+                raise ImportError("duckduckgo needs: pip install duckduckgo-search")
             results = DDGS().text(sentence, max_results=max_results, )
             for j, result in enumerate(results):
                 if verbose:

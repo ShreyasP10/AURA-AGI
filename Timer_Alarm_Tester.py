@@ -5,7 +5,7 @@ from ENGINE.STT import DevsDoCode
 from ENGINE.TTS import edge_tts
 
 if __name__ == "__main__":
-    listener = AURA-Team.SpeechToTextListener(language="en-IN")  # You can specify the desired language here
+    listener = DevsDoCode.SpeechToTextListener(language="en-IN")  # You can specify the desired language here
     alarm_manager = Alarms.AlarmManager(verbose=True)
 
     while True: 

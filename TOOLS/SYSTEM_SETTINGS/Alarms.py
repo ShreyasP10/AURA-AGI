@@ -1,5 +1,12 @@
 from typing import List, Dict, Tuple, Any
-from win10toast import ToastNotifier
+try:
+    from win10toast import ToastNotifier
+except ImportError:
+    # Fallback: print-only notifier (pip install win10toast for Windows toast)
+    class ToastNotifier:  # type: ignore
+        def show_toast(self, title, msg, duration=5, **k):
+            print(f"[TOAST] {title}: {msg}")
+            return True
 import datetime
 import threading
 import json
@@ -17,7 +24,10 @@ class AlarmManager:
         Args:
             verbose (bool, optional): Whether to print status messages. Defaults to False.
         """
-        self._notifier: ToastNotifier = ToastNotifier()
+        try:
+            self._notifier = ToastNotifier()
+        except Exception:
+            self._notifier = None
         self._alarm_file: str = 'ASSETS/alarms.json'
         self._verbose: bool = verbose
         self._alarms: List[Dict[str, str]] = self._load_alarms()
@@ -121,7 +131,13 @@ class AlarmManager:
         """
         if self._verbose:
             print(f"\033[94m{alarm_type.capitalize()} ringing for {alarm_time}\033[0m")
-        self._notifier.show_toast("ShreyasP10's AURA", f"{alarm_type.capitalize()} For " + alarm_time + "", duration=5)
+        try:
+            if self._notifier is not None:
+                self._notifier.show_toast("ShreyasP10's AURA", f"{alarm_type.capitalize()} For " + alarm_time + "", duration=5)
+            else:
+                print(f"[ALARM] {alarm_type} for {alarm_time}")
+        except Exception as e:
+            print(f"Toast failed ({e}), alarm: {alarm_time}")
         self._remove_alarm(alarm_time)
 
     def schedule_all_alarms(self) -> None:

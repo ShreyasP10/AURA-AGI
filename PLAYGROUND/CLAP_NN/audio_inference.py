@@ -80,14 +80,20 @@ class AudioModelHandler:
         return predicted.item()
 
 
-def main(audio_path_index) -> None:
+def main(audio_path_index, loop: bool = False) -> None:
     """
     Main function to run the audio classification prediction.
+    Set loop=True to predict repeatedly (default False fixes infinite-loop bug).
     """
     model_path = r"ASSETS\CLAP_DETECTS\MODELS\Clap_Detect_Model.pth"
     audio_handler = AudioModelHandler(model_path)
 
-    while True:
+    if loop:
+        while True:
+            prediction = audio_handler.predict(audio_path_index)
+            print("Noise = 0, Clap = 1")
+            print(f"The predicted class for {audio_path_index} is {prediction}")
+    else:
         prediction = audio_handler.predict(audio_path_index)
         print("Noise = 0, Clap = 1")
         print(f"The predicted class for {audio_path_index} is {prediction}")

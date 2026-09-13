@@ -20,23 +20,66 @@ class SpeechToTextListener:
             website_path: str = None,  # auto-detect local file with 2s silence fix
             language: str = "hi-IN",
             wait_time: int = 10,
-            silence_timeout: int = 2000):  # ms, for continuous listening
+            silence_timeout: int = 2000,  # ms, for continuous listening
+            browser: str = None,  # "chrome" or "brave" (default from AURA_BROWSER env or chrome)
+            brave_path: str = None):  # explicit brave.exe path
         import os
         if website_path is None:
             # use local src/index.html with 2s silence fix (continuous=true)
             local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "index.html")
             website_path = "file:///" + local_path.replace("\\", "/")
+        if browser is None:
+            browser = os.environ.get("AURA_BROWSER", "chrome").lower()
         
         """Initializes the STT class with the given website path and language."""
         self.website_path = website_path
         self.language = language
+        self.browser = browser
         self.chrome_options = Options()
         self.chrome_options.add_argument("--use-fake-ui-for-media-stream")
         self.chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
-        self.chrome_options.add_argument("--headless=new")
+        # AURA_HEADLESS=0 runs headed for mic debugging (headless has no real mic)
+        _headless = os.environ.get("AURA_HEADLESS", "1") != "0"
+        if _headless:
+            self.chrome_options.add_argument("--headless=new")
+        else:
+            print("STT headed mode (AURA_HEADLESS=0) — browser window will open")
+        # file:// mic access
+        self.chrome_options.add_argument("--allow-file-access-from-files")
+        self.chrome_options.add_argument("--disable-features=DialMediaRouteProvider")
+        # Isolated profile so running Brave/Chrome doesn't lock Default (fixes NoSuchWindow target closed)
+        import tempfile
+        _profile = os.path.join(tempfile.gettempdir(), f"aura-{browser}-profile")
+        try:
+            os.makedirs(_profile, exist_ok=True)
+        except Exception:
+            pass
+        self.chrome_options.add_argument(f"--user-data-dir={_profile}")
+        self.chrome_options.add_argument("--no-default-browser-check")
+        self.chrome_options.add_argument("--no-first-run")
+        self.chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        if browser == "brave":
+            # Brave Shields blocks Google Web Speech (network) — disable shields features
+            # Brave is Chromium-based, reuse ChromeDriver with brave binary
+            self.chrome_options.add_argument("--disable-features=BraveShields,BraveAdblock")
+            candidates = [
+                brave_path,
+                os.environ.get("BRAVE_PATH"),
+                r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+            ]
+            found = next((p for p in candidates if p and os.path.exists(p)), None)
+            if not found:
+                raise FileNotFoundError("Brave not found. Set BRAVE_PATH env or pass brave_path. Searched: " + ", ".join([str(c) for c in candidates if c]))
+            self.chrome_options.binary_location = found
+            print(f"Using Brave: {found}")
         self.driver = webdriver.Chrome(options=self.chrome_options)
         self.wait = WebDriverWait(self.driver, wait_time)
-        print("Made By ❤️ @AURA-Team")
+        try:
+            print("Made By \u2764\ufe0f @AURA-Team")
+        except UnicodeEncodeError:
+            print("Made By @AURA-Team")
 
     def stream(self, content: str):
         """Prints the given content to the console with a yellow color, overwriting previous output, with "speaking..." added."""
