@@ -3,6 +3,7 @@ import json
 import re
 from typing import List, Dict, Optional
 
+
 class FarFalle:
     """A class to interact with the FarFalle chat service.
 
@@ -16,7 +17,12 @@ class FarFalle:
         self.session: requests.Session = requests.Session()
         self.url: str = "https://farfalle.onrender.com/chat"
 
-    def generate(self, conversation_history: List[Dict[str, str]], model: Optional[str] = 'llama-3-70b', stream: Optional[bool] = False) -> tuple[str, dict]:
+    def generate(
+        self,
+        conversation_history: List[Dict[str, str]],
+        model: Optional[str] = "llama-3-70b",
+        stream: Optional[bool] = False,
+    ) -> tuple[str, dict]:
         """Generates a response from the FarFalle chat service.
 
         Args:
@@ -31,14 +37,20 @@ class FarFalle:
         """
         # Extract the last user query from the conversation_history and remove it from the conversation_history list
         # Extract the last user query and update conversation_history in one line
-        query, conversation_history = next(((item['content'], conversation_history[:i] + conversation_history[i+1:]) for i, item in enumerate(reversed(conversation_history)) if item['role'] == 'user'), ('', conversation_history))
+        query, conversation_history = next(
+            (
+                (
+                    item["content"],
+                    conversation_history[:i] + conversation_history[i + 1 :],
+                )
+                for i, item in enumerate(reversed(conversation_history))
+                if item["role"] == "user"
+            ),
+            ("", conversation_history),
+        )
 
         # Prepare the payload with the extracted query and the updated conversation_history
-        payload = {
-            "query": query,
-            "history": conversation_history,
-            "model": model
-        }
+        payload = {"query": query, "history": conversation_history, "model": model}
 
         content = ""
         sources = {}
@@ -51,10 +63,11 @@ class FarFalle:
                     json_data = json.loads(modified_line)
                     if not sources:
                         sources = json_data
-                    content += json_data['data']['text']
+                    content += json_data["data"]["text"]
                     if stream:
-                        print(json_data['data']['text'], end="", flush=True)
-                except: continue
+                        print(json_data["data"]["text"], end="", flush=True)
+                except Exception:
+                    continue
         return content, sources
 
     def process_sources(self, sources: dict) -> tuple[List[Dict[str, str]], List[str]]:
@@ -70,16 +83,19 @@ class FarFalle:
         results = []
         images = []
 
-        for result in sources['data']['results']:
-            results.append({
-                'title': result['title'],
-                'url': result['url'],
-                'content': result['content']
-            })
+        for result in sources["data"]["results"]:
+            results.append(
+                {
+                    "title": result["title"],
+                    "url": result["url"],
+                    "content": result["content"],
+                }
+            )
 
-        images = sources['data']['images']
+        images = sources["data"]["images"]
 
         return results, images
+
 
 if __name__ == "__main__":
     farfalle = FarFalle()
@@ -87,7 +103,7 @@ if __name__ == "__main__":
     conversation_history = [
         {"role": "user", "content": "What is the capital of France?"},
         {"role": "assistant", "content": "The capital of France is Paris."},
-        {"role": "user", "content": "And what is its population?"}
+        {"role": "user", "content": "And what is its population?"},
     ]
 
     # Example without streaming
@@ -99,7 +115,9 @@ if __name__ == "__main__":
 
     # Example with streaming
     print("\nStreaming response:")
-    response, sources = farfalle.generate(conversation_history, model='gpt-4o', stream=True)
+    response, sources = farfalle.generate(
+        conversation_history, model="gpt-4o", stream=True
+    )
     results, images = farfalle.process_sources(sources)
-    print("\033[91m\nResults:", results , "\033[0m")
+    print("\033[91m\nResults:", results, "\033[0m")
     print("\033[96mImages:", images, "\033[0m")

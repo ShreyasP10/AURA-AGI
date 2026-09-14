@@ -24,17 +24,12 @@
 #     print("All audio files have been played.")
 
 
-
-
-
 from BRAIN.AI.TEXT.API.Phind import generate
 from ENGINE.TTS.STREAMING.DeepGram import speak
 
 if __name__ == "__main__":
     system_prompt = "Be Helpful and Friendly"
-    conversation_history = [
-        {"role": "user", "content": "Write 10 lines on India"}
-    ]
+    conversation_history = [{"role": "user", "content": "Write 10 lines on India"}]
     response = generate(prompt=conversation_history, system_prompt=system_prompt)
     print(f"\n\033[91mAI:\033[0m \033[92m{response}\033[0m")
     speak(response)

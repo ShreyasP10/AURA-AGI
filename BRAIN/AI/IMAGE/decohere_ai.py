@@ -2,9 +2,21 @@ import requests
 import base64
 from typing import Tuple, Optional
 import os
-from dotenv import load_dotenv; load_dotenv() # Load environment variables from .env file
+from dotenv import load_dotenv
 
-def generate(prompt: str, seed: int=1800647681, width: int=1024, height: int=576, steps: int=4, enhance: bool=True, safety_filter: bool=True, image_path: str="ASSETS/image.jpg") -> Tuple[bool, Optional[str]]:
+load_dotenv()  # Load environment variables from .env file
+
+
+def generate(
+    prompt: str,
+    seed: int = 1800647681,
+    width: int = 1024,
+    height: int = 576,
+    steps: int = 4,
+    enhance: bool = True,
+    safety_filter: bool = True,
+    image_path: str = "ASSETS/image.jpg",
+) -> Tuple[bool, Optional[str]]:
     """
     Generates an image based on the given parameters and saves it to a file.
 
@@ -13,7 +25,7 @@ def generate(prompt: str, seed: int=1800647681, width: int=1024, height: int=576
     - seed (int): Seed for the image generation process.
     - width (int): Width of the generated image.
     - height (int): Height of the generated image.
-    - steps (int): Number of steps for the image generation process. More the Steps More Clear and Realistic Image 
+    - steps (int): Number of steps for the image generation process. More the Steps More Clear and Realistic Image
     - enhance (bool): Whether to enhance the image quality.
     - safety_filter (bool): Whether to apply a safety filter to the image.
 
@@ -37,7 +49,7 @@ def generate(prompt: str, seed: int=1800647681, width: int=1024, height: int=576
         "prompt": prompt,
         "seed": seed,
         "width": width,
-        "height": height, 
+        "height": height,
         "steps": steps,
         "enhance": enhance,
         "safety_filter": safety_filter,
@@ -50,7 +62,7 @@ def generate(prompt: str, seed: int=1800647681, width: int=1024, height: int=576
         return False, f"Network error: {e}"
     if response.status_code == 200:
         try:
-            base64_image_data = response.json().get('image', '')
+            base64_image_data = response.json().get("image", "")
             if not base64_image_data:
                 return False, f"No image in response: {response.text[:200]}"
             image_bytes = base64.b64decode(base64_image_data)
@@ -61,7 +73,8 @@ def generate(prompt: str, seed: int=1800647681, width: int=1024, height: int=576
             return False, f"Decode failed: {e} – {response.text[:200]}"
     else:
         return False, f"API {response.status_code}: {response.text[:200]}"
-    
+
+
 # Example usage:
 if __name__ == "__main__":
     # prompt = "Picture an alien landscape, with strange, otherworldly plants and a sky filled with unfamiliar constellations. The scene is shot in a cinematic style, with the alien flora and starry sky providing a surreal backdrop. The image is taken with a high-resolution camera, capturing the intricate details of the alien plants and the twinkling stars. The lighting is a mix of the soft, alien sunlight and the glow from the stars. The final image is a hyper-realistic, ultra-detailed snapshot of this extraterrestrial concept art. –ar 16:9 –v 5.2 –style raw "
@@ -92,8 +105,8 @@ if __name__ == "__main__":
 
     prompt = "Ravenswood Manor stands atop a fog-shrouded hill. Its turrets and gables loom like silent sentinels. Inside, candelabras flicker, casting elongated shadows on velvet wallpaper. A ghostly pianist plays a mournful melody in the ballroom, while a spectral lady in white drifts down the grand staircase. Describe the chill in the air, the scent of old roses, and the secrets hidden in the dusty library."
 
-
-
     success, file_path = generate(prompt)
-    if success: print(f"Image saved at {file_path}")
-    else: print("Failed to generate the image.")
+    if success:
+        print(f"Image saved at {file_path}")
+    else:
+        print("Failed to generate the image.")

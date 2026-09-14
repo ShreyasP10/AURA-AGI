@@ -4,15 +4,19 @@ import torchaudio.transforms as T
 from torch import nn
 from torchvision.transforms import Resize
 
-try: from PLAYGROUND.CLAP_NN.cnn_sound_model import AudioClassifier
-except ModuleNotFoundError: from cnn_sound_model import AudioClassifier
-except: raise Exception("Error importing cnn_sound_model.py")
+try:
+    from PLAYGROUND.CLAP_NN.cnn_sound_model import AudioClassifier
+except ModuleNotFoundError:
+    from cnn_sound_model import AudioClassifier
+except Exception:
+    raise Exception("Error importing cnn_sound_model.py")
 
 
 class AudioModelHandler:
     """
     Handler class for loading and using the audio classification model.
     """
+
     def __init__(self, model_path: str):
         """
         Initializes the AudioModelHandler.
@@ -34,12 +38,17 @@ class AudioModelHandler:
             nn.Module: Loaded model.
         """
         model = AudioClassifier()
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         model.eval()
         return model
 
     @staticmethod
-    def transform_audio(audio_path_index: str, n_mels: int = 128, n_fft: int = 400, hop_length: int = 200) -> torch.Tensor:
+    def transform_audio(
+        audio_path_index: str,
+        n_mels: int = 128,
+        n_fft: int = 400,
+        hop_length: int = 200,
+    ) -> torch.Tensor:
         """
         Transforms the audio file into a normalized mel spectrogram tensor.
 
@@ -61,7 +70,9 @@ class AudioModelHandler:
             n_mels=n_mels,
         )(waveform)
         mel_spectrogram = Resize((256, 256))(mel_spectrogram)
-        normalized_spec = (mel_spectrogram - mel_spectrogram.mean()) / mel_spectrogram.std()
+        normalized_spec = (
+            mel_spectrogram - mel_spectrogram.mean()
+        ) / mel_spectrogram.std()
         return normalized_spec.unsqueeze(0)
 
     def predict(self, audio_path_index: str) -> int:

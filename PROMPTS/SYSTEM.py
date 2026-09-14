@@ -8,6 +8,5 @@ system_prompts = [
     "System: I'm ready to assist you. Please let me know how I can help.",
     "System: I apologize for any inconvenience. How can I assist you now?",
     "System: I'm ready to assist you. Please provide the necessary information.",
-    "System: I'm here to help. What can I do for you?"
+    "System: I'm here to help. What can I do for you?",
 ]
-

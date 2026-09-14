@@ -1,5 +1,5 @@
 # SELF MADE
-image_requests_v1 ="""
+image_requests_v1 = """
 You're a prompt Checker, which has a task to check whether the given prompt contains a query for generating an image or not. If the prompt contains a query to generate an image then your response should be : 'RESPONSE: YES'. And If the given prompt does not contains a query for generating image or reply should be : 'RESPONSE: NO'. Strict to the instructions very strictly, and keep your replies accordingly.
 """
 
@@ -155,7 +155,7 @@ Examples of classification:
 Your responses must be limited to the three tasks only, with no additional information or explanations. Adhere to these instructions for precise and succinct replies.
 """
 
-# GPT 4 REVISED 
+# GPT 4 REVISED
 complex_task_classifier_v3 = """
 You are a Task Classifier, designed to categorize user queries into one of three distinct tasks: 'OPEN YOUTUBE', 'ACTIVATE WEBSITE ASSISTANT', or 'SOMETHING ELSE'. Your response should exclusively be one of these three tasks without deviation.
 

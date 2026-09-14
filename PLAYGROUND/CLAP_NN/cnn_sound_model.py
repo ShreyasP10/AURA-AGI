@@ -1,11 +1,13 @@
 import torch
 from torch import nn
-from torch.nn import functional 
+from torch.nn import functional
+
 
 class AudioClassifier(nn.Module):
     """
     Audio Classifier using a Convolutional Neural Network.
     """
+
     def __init__(self) -> None:
         """
         Initializes the AudioClassifier module.

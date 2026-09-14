@@ -203,7 +203,9 @@ class ConversationalAgent:
 
             return assistant_id, user_id
         else:
-            return os.environ.get("OPENGPT_ASSISTANT_ID"), os.environ.get("OPENGPT_USER_ID")
+            return os.environ.get("OPENGPT_ASSISTANT_ID"), os.environ.get(
+                "OPENGPT_USER_ID"
+            )
 
     def _update_environment_variable(self, key: str, value: str):
         """
@@ -249,7 +251,9 @@ class ConversationalAgent:
         """
 
         if system_message:
-            conversation_history.insert(0, {"content": system_message, "type": "system"})
+            conversation_history.insert(
+                0, {"content": system_message, "type": "system"}
+            )
 
         headers = {"Cookie": f"opengpts_user_id={self.user_id}"}
         payload = {
@@ -285,9 +289,15 @@ class ConversationalAgent:
 if __name__ == "__main__":
     conversation_history = [
         {"role": "user", "content": "My favorite color is blue."},
-        {"role": "assistant", "content": "Nice! Blue is a calming and serene color. Is there something else you'd like to share?"},
+        {
+            "role": "assistant",
+            "content": "Nice! Blue is a calming and serene color. Is there something else you'd like to share?",
+        },
         {"role": "user", "content": "What color did I mention just now?"},
-        {"role": "assistant", "content": "Ah, you mentioned blue! It's a great color, isn't it?"},
+        {
+            "role": "assistant",
+            "content": "Ah, you mentioned blue! It's a great color, isn't it?",
+        },
         {"role": "user", "content": "Write 30 Lines about India"},
     ]
 
@@ -304,12 +314,9 @@ if __name__ == "__main__":
         # enable_wikipedia=True,
     )
     final_response = agent.generate(
-                conversation_history, system_message=system_message, stream_response=True
-            )
+        conversation_history, system_message=system_message, stream_response=True
+    )
     print("\n\nFinal Response:", final_response)
-
-
-
 
 
 "******************************************************************"
@@ -318,12 +325,13 @@ if __name__ == "__main__":
 
 "******************************************************************"
 
+
 def generate(
     conversation_history: List[Dict[str, str]],
     system_prompt: Optional[str] = "Be helpful and friendly",
     assistant_id: Optional[str] = os.environ.get("OPENGPT_ASSISTANT_ID"),
     user_id: Optional[str] = os.environ.get("OPENGPT_USER_ID"),
-    stream=True
+    stream=True,
 ) -> str:
     """
     Streams a conversation with a GPT model hosted on the specified endpoint.
@@ -347,7 +355,7 @@ def generate(
 
     # Define the API endpoint and headers
     api_endpoint = "https://opengpts-example-vz4y4ooboq-uc.a.run.app/runs/stream"
-    headers = {"Cookie": F"opengpts_user_id={user_id}"}
+    headers = {"Cookie": f"opengpts_user_id={user_id}"}
 
     # Construct the request payload
     payload = {
@@ -363,7 +371,7 @@ def generate(
     for line in response.iter_lines(decode_unicode=True, chunk_size=1):
         if line:
             try:
-                content = json.loads(re.sub("data:", "", line))[-1]['content']
+                content = json.loads(re.sub("data:", "", line))[-1]["content"]
                 if initial_responses_to_ignore > 0:
                     initial_responses_to_ignore -= 1
                 else:
@@ -376,16 +384,21 @@ def generate(
     return complete_response
 
 
-
 if __name__ == "__main__":
     conversation = [
-    {"role": "user", "content": "My favorite color is blue."},
-    {"role": "assistant", "content": "Nice! Blue is a calming and serene color. Is there something else you'd like to share?"},
-    {"role": "user", "content": "What color did I mention just now?"},
-    {"role": "assistant", "content": "Ah, you mentioned blue! It's a great color, isn't it?"},
-    {"role": "user", "content": "Write 10 Lines about India"}
-]
+        {"role": "user", "content": "My favorite color is blue."},
+        {
+            "role": "assistant",
+            "content": "Nice! Blue is a calming and serene color. Is there something else you'd like to share?",
+        },
+        {"role": "user", "content": "What color did I mention just now?"},
+        {
+            "role": "assistant",
+            "content": "Ah, you mentioned blue! It's a great color, isn't it?",
+        },
+        {"role": "user", "content": "Write 10 Lines about India"},
+    ]
 
-    system_message = "Talk Like Shakesphere" 
+    system_message = "Talk Like Shakesphere"
     final_response = generate(conversation, system_prompt=system_message, stream=True)
-    print("\n\nFinal Response:", final_response) 
+    print("\n\nFinal Response:", final_response)

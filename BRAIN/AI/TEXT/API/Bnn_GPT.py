@@ -2,9 +2,16 @@ import requests
 import json
 import os
 from typing import Optional
-from dotenv import load_dotenv; load_dotenv()
+from dotenv import load_dotenv
 
-def generate_query(query: str, url: Optional[str] = "https://bnngpt.com/", verbose: Optional[bool] = True) -> str:
+load_dotenv()
+
+
+def generate_query(
+    query: str,
+    url: Optional[str] = "https://bnngpt.com/",
+    verbose: Optional[bool] = True,
+) -> str:
     """
     Sends a POST request to the specified URL with a query and processes the response in real-time.
 
@@ -34,18 +41,18 @@ def generate_query(query: str, url: Optional[str] = "https://bnngpt.com/", verbo
     # Define the payload
     payload = (
         "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
-        "Content-Disposition: form-data; name=\"1\"\r\n\r\n"
-        "{\"id\":\"6399a7e212fa477d1a783edade27c8354a64e1ab\",\"bound\":null}\r\n"
+        'Content-Disposition: form-data; name="1"\r\n\r\n'
+        '{"id":"6399a7e212fa477d1a783edade27c8354a64e1ab","bound":null}\r\n'
         "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
-        "Content-Disposition: form-data; name=\"2\"\r\n\r\n"
-        "{\"id\":\"9eed8f3e1c51044505fd5c0d73e8d2a92572691c\",\"bound\":null}\r\n"
+        'Content-Disposition: form-data; name="2"\r\n\r\n'
+        '{"id":"9eed8f3e1c51044505fd5c0d73e8d2a92572691c","bound":null}\r\n'
         "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
-        "Content-Disposition: form-data; name=\"3_input\"\r\n\r\n"
+        'Content-Disposition: form-data; name="3_input"\r\n\r\n'
         f"{query}\r\n"
         "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
-        "Content-Disposition: form-data; name=\"0\"\r\n\r\n"
-        "[{\"action\":\"$F1\",\"options\":{\"onSetAIState\":\"$F2\"}},"
-        "{\"chatId\":\"AURA-Team\",\"messages\":[]},\"$K3\",\"gpt-4o\"]\r\n"
+        'Content-Disposition: form-data; name="0"\r\n\r\n'
+        '[{"action":"$F1","options":{"onSetAIState":"$F2"}},'
+        '{"chatId":"AURA-Team","messages":[]},"$K3","gpt-4o"]\r\n'
         "------WebKitFormBoundarycDuq4Qbo8Y2u0is9--"
     )
 
@@ -72,22 +79,23 @@ def generate_query(query: str, url: Optional[str] = "https://bnngpt.com/", verbo
 
         try:
             if response_counter > 0:
-                if chunk_['curr'] != True:
-                    complete_response += str(chunk_['curr'])
+                if not chunk_["curr"]:
+                    complete_response += str(chunk_["curr"])
                     if verbose:
-                        print(str(chunk_['curr']), end="", flush=True)
+                        print(str(chunk_["curr"]), end="", flush=True)
                 response_counter -= 1
         except Exception:
             continue
 
         try:
-            complete_response += str(chunk_['diff'][1])
+            complete_response += str(chunk_["diff"][1])
             if verbose:
-                print(chunk_['diff'][1], end="", flush=True)
+                print(chunk_["diff"][1], end="", flush=True)
         except Exception:
             continue
 
     return complete_response
+
 
 # Example usage
 if __name__ == "__main__":

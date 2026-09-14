@@ -2,6 +2,7 @@ import requests
 import base64
 import time
 
+
 def encode_image_to_base64(image_path: str) -> str:
     """
     Encodes the image file to a Base64 string.
@@ -15,7 +16,13 @@ def encode_image_to_base64(image_path: str) -> str:
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-def generate(user_message: str, image_path: str, system_prompt: str="Be a helpful assistant", model: str="llava-hf/llava-1.5-7b-hf") -> str:
+
+def generate(
+    user_message: str,
+    image_path: str,
+    system_prompt: str = "Be a helpful assistant",
+    model: str = "llava-hf/llava-1.5-7b-hf",
+) -> str:
     """
     Sends a POST request to the specified API with the given payload.
 
@@ -39,9 +46,9 @@ def generate(user_message: str, image_path: str, system_prompt: str="Be a helpfu
         "Host": "api.deepinfra.com",
         "Origin": "https://deepinfra.com",
         "Referer": "https://deepinfra.com/",
-        "Sec-Ch-Ua": "\"Google Chrome\";v=\"125\", \"Chromium\";v=\"125\", \"Not.A/Brand\";v=\"24\"",
+        "Sec-Ch-Ua": '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
         "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": "\"Windows\"",
+        "Sec-Ch-Ua-Platform": '"Windows"',
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site",
@@ -54,20 +61,26 @@ def generate(user_message: str, image_path: str, system_prompt: str="Be a helpfu
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": [
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64, {image_base64}"}},
-                {"type": "text", "text": user_message}
-            ]}
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64, {image_base64}"},
+                    },
+                    {"type": "text", "text": user_message},
+                ],
+            },
         ],
-        "stream": False
+        "stream": False,
     }
     response = requests.post(api_url, headers=headers, json=payload, timeout=30)
     try:
         response.raise_for_status()
         data = response.json()
-        if 'choices' not in data or not data['choices']:
+        if "choices" not in data or not data["choices"]:
             return f"Vision error: no choices in {data}"
-        return data['choices'][0]['message']['content']
+        return data["choices"][0]["message"]["content"]
     except requests.exceptions.RequestException as e:
         return f"Vision API failed: {e} – {response.text[:200]}"
     except (KeyError, IndexError) as e:
@@ -77,11 +90,11 @@ def generate(user_message: str, image_path: str, system_prompt: str="Be a helpfu
 if __name__ == "__main__":
     start_time = time.time()
     user_message = "Describe the image"
-    api_response = generate(user_message, image_path=r"C:\Users\Shreyasj\Downloads\Reverse.png")
+    api_response = generate(
+        user_message, image_path=r"C:\Users\Shreyasj\Downloads\Reverse.png"
+    )
     print("Response content:", api_response)
     print("Time taken:", time.time() - start_time)
-
-
 
 
 "*******************************************************"

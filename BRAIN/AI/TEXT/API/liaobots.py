@@ -1,9 +1,16 @@
 import requests
 import uuid
 import os
-from dotenv import load_dotenv; load_dotenv()
+from dotenv import load_dotenv
 
-def generate(query: str, system_prompt: str="Keep your responses short and to the point", model_id: str="claude-instant-1"):
+load_dotenv()
+
+
+def generate(
+    query: str,
+    system_prompt: str = "Keep your responses short and to the point",
+    model_id: str = "claude-instant-1",
+):
     """
     This function facilitates interaction with a variety of conversational AI models hosted on an external API endpoint. It allows users to submit queries and receive responses from different AI models based on their requirements.
 
@@ -36,12 +43,48 @@ def generate(query: str, system_prompt: str="Keep your responses short and to th
 
     # Define the payload based on model_id
     model_details = {
-        "gpt-3.5-turbo": {"maxLength": 48000, "tokenLimit": 14000, "model": "ChatGPT", "provider": "OpenAI", "context": "16K"},
-        "gpt-4-turbo-preview": {"maxLength": 260000, "tokenLimit": 126000, "model": "ChatGPT", "provider": "OpenAI", "context": "128K"},
-        "gpt-4-plus": {"maxLength": 130000, "tokenLimit": 31000, "model": "ChatGPT", "provider": "OpenAI", "context": "32K"},
-        "claude-3-haiku-20240307": {"maxLength": 800000, "tokenLimit": 200000, "model": "Claude", "provider": "Anthropic", "context": "200K"},
-        "claude-2.1": {"maxLength": 800000, "tokenLimit": 200000, "model": "Claude", "provider": "Anthropic", "context": "200K"},
-        "claude-instant-1": {"maxLength": 400000, "tokenLimit": 100000, "model": "Claude", "provider": "Anthropic", "context": "100K"}
+        "gpt-3.5-turbo": {
+            "maxLength": 48000,
+            "tokenLimit": 14000,
+            "model": "ChatGPT",
+            "provider": "OpenAI",
+            "context": "16K",
+        },
+        "gpt-4-turbo-preview": {
+            "maxLength": 260000,
+            "tokenLimit": 126000,
+            "model": "ChatGPT",
+            "provider": "OpenAI",
+            "context": "128K",
+        },
+        "gpt-4-plus": {
+            "maxLength": 130000,
+            "tokenLimit": 31000,
+            "model": "ChatGPT",
+            "provider": "OpenAI",
+            "context": "32K",
+        },
+        "claude-3-haiku-20240307": {
+            "maxLength": 800000,
+            "tokenLimit": 200000,
+            "model": "Claude",
+            "provider": "Anthropic",
+            "context": "200K",
+        },
+        "claude-2.1": {
+            "maxLength": 800000,
+            "tokenLimit": 200000,
+            "model": "Claude",
+            "provider": "Anthropic",
+            "context": "200K",
+        },
+        "claude-instant-1": {
+            "maxLength": 400000,
+            "tokenLimit": 100000,
+            "model": "Claude",
+            "provider": "Anthropic",
+            "context": "100K",
+        },
     }
 
     if model_id not in model_details:
@@ -51,16 +94,13 @@ def generate(query: str, system_prompt: str="Keep your responses short and to th
     payload = {
         "maxRounds": 1,
         "conversationId": str(uuid.uuid4()),
-        "model": {
-            "id": model_id,
-            **model_details[model_id]
-        },
+        "model": {"id": model_id, **model_details[model_id]},
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": query}
+            {"role": "user", "content": query},
         ],
         "key": "",
-        "prompt": system_prompt
+        "prompt": system_prompt,
     }
 
     # Make the POST request
@@ -71,6 +111,7 @@ def generate(query: str, system_prompt: str="Keep your responses short and to th
         return response.text  # If you want to print the response JSON
     else:
         return f"API call failed with status code {response.status_code}\n Error : {response.text}"
+
 
 if __name__ == "__main__":
     # Example usage:

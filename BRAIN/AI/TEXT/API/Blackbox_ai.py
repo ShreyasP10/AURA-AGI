@@ -2,7 +2,13 @@ import requests
 import re
 from typing import Tuple, Optional
 
-def generate(prompt: str, system_prompt: str = " Don't Write Code unless Mentioned", web_access: bool = True, stream: bool = True) -> Tuple[Optional[str], str]:
+
+def generate(
+    prompt: str,
+    system_prompt: str = " Don't Write Code unless Mentioned",
+    web_access: bool = True,
+    stream: bool = True,
+) -> Tuple[Optional[str], str]:
     """
     Generates a response for the given prompt using the Blackbox.ai API.
 
@@ -19,11 +25,14 @@ def generate(prompt: str, system_prompt: str = " Don't Write Code unless Mention
     chat_endpoint = "https://www.blackbox.ai/api/chat"
 
     payload = {
-        "messages": [{"content": system_prompt, "role": "system"}, {"content": prompt, "role": "user"}],
+        "messages": [
+            {"content": system_prompt, "role": "system"},
+            {"content": prompt, "role": "user"},
+        ],
         "agentMode": {},
         "trendingAgentMode": {},
     }
-    
+
     if web_access:
         payload["codeModelMode"] = web_access
 
@@ -34,19 +43,21 @@ def generate(prompt: str, system_prompt: str = " Don't Write Code unless Mention
 
     for text_stream in response.iter_lines(decode_unicode=True, delimiter="\n"):
         if text_stream:
-            if sources is None: sources = text_stream
+            if sources is None:
+                sources = text_stream
             else:
-                if stream: print(text_stream)
+                if stream:
+                    print(text_stream)
                 resp += text_stream + "\n"
 
-    if sources: 
-        if stream: print(re.sub(r'\$@\$\w+=v\d+\.\d+\$@\$', '', sources))
+    if sources:
+        if stream:
+            print(re.sub(r"\$@\$\w+=v\d+\.\d+\$@\$", "", sources))
     return sources, resp
 
 
 # Example usage:
 if __name__ == "__main__":
-
     query = "When did IPL 2024 start and end? Please provide a detailed response."
     query = "Write 30 Lines on India."
     sources, resp = generate(query, web_access=False, stream=True)

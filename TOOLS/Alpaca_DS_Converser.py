@@ -1,8 +1,11 @@
 import json
 import os
 
+
 class ConversationHistoryManager:
-    def __init__(self, conversation_file="ASSETS/conversation_history.json", history_offset=400):
+    def __init__(
+        self, conversation_file="ASSETS/conversation_history.json", history_offset=400
+    ):
         self.history_offset = history_offset
         self.conversation_file = conversation_file
         if os.path.exists(conversation_file):
@@ -14,7 +17,7 @@ class ConversationHistoryManager:
                 # If file is not empty, load the list from the file
                 with open(conversation_file, "r") as file:
                     self.history = json.load(file)
-                
+
                 # Check if the last entry in history is a user entry
                 if self.history and self.history[-1].get("role") == "user":
                     print("Deleted")
@@ -40,9 +43,15 @@ class ConversationHistoryManager:
         self.strip_history()
 
     def update_file(self, user_query, assistant_response):
-        conversation_json = [{"role": "user", "content": user_query}, {"role": "assistant", "content": assistant_response}]
+        conversation_json = [
+            {"role": "user", "content": user_query},
+            {"role": "assistant", "content": assistant_response},
+        ]
         data = []
-        if os.path.exists(self.conversation_file) and os.path.getsize(self.conversation_file) > 0:
+        if (
+            os.path.exists(self.conversation_file)
+            and os.path.getsize(self.conversation_file) > 0
+        ):
             with open(self.conversation_file, "r") as file:
                 try:
                     data = json.load(file)
@@ -56,7 +65,9 @@ class ConversationHistoryManager:
         with open(self.conversation_file, "w") as file:
             json.dump(data, file, indent=4)
 
-        self.store_history(self.history + [{"role": "assistant", "content": assistant_response}])
+        self.store_history(
+            self.history + [{"role": "assistant", "content": assistant_response}]
+        )
 
     def load_history(self):
         with open(self.conversation_file, "r") as file:
@@ -77,17 +88,17 @@ class ConversationHistoryManager:
         self.history = trimmed_history
 
 
-
 if __name__ == "__main__":
-
     history_manager = ConversationHistoryManager()
 
     while True:
         user_query = input("You: ")
-        if user_query.lower() == '/bye':
+        if user_query.lower() == "/bye":
             print("Exiting chat...")
             break
 
-        history_manager.store_history(history_manager.history + [{"role": "user", "content": user_query}])
+        history_manager.store_history(
+            history_manager.history + [{"role": "user", "content": user_query}]
+        )
         print("\n\n\033[93m" + str(history_manager.history) + "\033[0m\n\n")
         history_manager.update_file(user_query, "THIS IS THE ASSISTANT RESPONSE")

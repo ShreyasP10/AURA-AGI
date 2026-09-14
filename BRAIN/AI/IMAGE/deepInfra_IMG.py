@@ -1,8 +1,18 @@
 import requests
-import os
-from dotenv import load_dotenv; load_dotenv() # Load environment variables from .env file
+from dotenv import load_dotenv
 
-def generate(prompt: str, model: str = "stability-ai/sdxl", negative_prompt: str = "", width: int = 512, height: int = 512, num_outputs: int = 4, prompt_strength: float = 0.8):
+load_dotenv()  # Load environment variables from .env file
+
+
+def generate(
+    prompt: str,
+    model: str = "stability-ai/sdxl",
+    negative_prompt: str = "",
+    width: int = 512,
+    height: int = 512,
+    num_outputs: int = 4,
+    prompt_strength: float = 0.8,
+):
     """
     Initiates an API call to a deep infrastructure (DeepInfra) system, utilizing a language model to generate responses based on the provided prompt.
 
@@ -20,7 +30,7 @@ def generate(prompt: str, model: str = "stability-ai/sdxl", negative_prompt: str
         list of str: A list of generated responses based on the provided prompt and settings.
     """
 
-    url=f"https://api.deepinfra.com/v1/inference/{model}"
+    url = f"https://api.deepinfra.com/v1/inference/{model}"
     headers = {
         # "Authorization" : f"Bearer {os.environ.get('DEEPINFRA')}",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -32,18 +42,22 @@ def generate(prompt: str, model: str = "stability-ai/sdxl", negative_prompt: str
             "width": width,
             "height": height,
             "num_outputs": num_outputs,
-            "prompt_strength": prompt_strength
+            "prompt_strength": prompt_strength,
         }
     }
 
     response = requests.post(url, headers=headers, json=payload)
 
     try:
-        data = response.json()['output']
-        if data != None: return data
-        else: return response.text
+        data = response.json()["output"]
+        if data is not None:
+            return data
+        else:
+            return response.text
 
-    except Exception as e: return f"ERROR --> {e}\n{response.text}"
+    except Exception as e:
+        return f"ERROR --> {e}\n{response.text}"
+
 
 if __name__ == "__main__":
     # Example usage:

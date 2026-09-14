@@ -3,7 +3,10 @@ import json
 import re
 import os
 from typing import Optional
-from dotenv import load_dotenv; load_dotenv()
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class DeepSeekAPI:
     """
@@ -17,10 +20,8 @@ class DeepSeekAPI:
         Args:
             api_token (str): The Bearer token for API authorization.
         """
-        self.auth_headers = {
-            'Authorization': f'Bearer {api_token}'
-        }
-        self.api_base_url = 'https://chat.deepseek.com/api/v0/chat'
+        self.auth_headers = {"Authorization": f"Bearer {api_token}"}
+        self.api_base_url = "https://chat.deepseek.com/api/v0/chat"
         self.api_session = requests.Session()
         self.api_session.headers.update(self.auth_headers)
 
@@ -28,11 +29,23 @@ class DeepSeekAPI:
         """
         Clears the chat context by making a POST request to the clear_context endpoint.
         """
-        clear_payload = {"model_class": "deepseek_chat", "append_welcome_message": False}
-        clear_response = self.api_session.post(f'{self.api_base_url}/clear_context', json=clear_payload)
+        clear_payload = {
+            "model_class": "deepseek_chat",
+            "append_welcome_message": False,
+        }
+        clear_response = self.api_session.post(
+            f"{self.api_base_url}/clear_context", json=clear_payload
+        )
         clear_response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
 
-    def generate(self, user_message: str, response_temperature: float = 1.0, model_type: Optional[str] = "deepseek_chat", verbose: bool = False, system_prompt: Optional[str] = "Be Short & Concise") -> str:
+    def generate(
+        self,
+        user_message: str,
+        response_temperature: float = 1.0,
+        model_type: Optional[str] = "deepseek_chat",
+        verbose: bool = False,
+        system_prompt: Optional[str] = "Be Short & Concise",
+    ) -> str:
         """
         Generates a response from the DeepSeek API based on the provided message.
 
@@ -55,9 +68,11 @@ class DeepSeekAPI:
             "stream": True,
             "model_preference": None,
             "model_class": model_type,
-            "temperature": response_temperature
+            "temperature": response_temperature,
         }
-        api_response = self.api_session.post(f'{self.api_base_url}/completions', json=request_payload, stream=True)
+        api_response = self.api_session.post(
+            f"{self.api_base_url}/completions", json=request_payload, stream=True
+        )
         api_response.raise_for_status()
 
         combined_response = ""
@@ -65,16 +80,17 @@ class DeepSeekAPI:
             if response_line:
                 cleaned_line = re.sub("data:", "", response_line)
                 response_json = json.loads(cleaned_line)
-                response_content = response_json['choices'][0]['delta']['content']
-                if response_content and not re.match(r'^\s{5,}$', response_content):
-                    if verbose: print(response_content, end="", flush=True)
+                response_content = response_json["choices"][0]["delta"]["content"]
+                if response_content and not re.match(r"^\s{5,}$", response_content):
+                    if verbose:
+                        print(response_content, end="", flush=True)
                     combined_response += response_content
 
         return combined_response
 
+
 # Example usage
 if __name__ == "__main__":
-
     api = DeepSeekAPI()
     while True:
         print("\nYou: ", end="", flush=True)
@@ -85,5 +101,7 @@ if __name__ == "__main__":
             break
 
         print("AI: ", end="", flush=True)
-        api_response_content = api.generate(user_message=user_query, model_type='deepseek_chat', verbose=True)
+        api_response_content = api.generate(
+            user_message=user_query, model_type="deepseek_chat", verbose=True
+        )
         # print("\n\n" + api_response_content)

@@ -7,6 +7,7 @@ from typing import List, Dict, Optional
 
 load_dotenv()  # Load environment variables from .env file
 
+
 def generate(
     conversation_history: List[Dict[str, str]],
     system_prompt: Optional[str] = "You are a helpful and friendly AI assistant.",
@@ -17,7 +18,7 @@ def generate(
     presence_penalty: float = 0.06,
     repetition_penalty: float = 1.0,
     top_k: int = 0,
-    stream: bool = True
+    stream: bool = True,
 ) -> str:
     """
     Sends a request to the OpenRouter API and returns the generated text using the specified model.
@@ -47,7 +48,7 @@ def generate(
         - "huggingfaceh4/zephyr-7b-beta"
         - "mistralai/mistral-7b-instruct:free"
         - "meta-llama/llama-3-8b-instruct:free"
-    
+
     - Flagship Opensource:
         - "meta-llama/llama-3-8b-instruct:extended"
         - "lynn/soliloquy-l3"
@@ -67,24 +68,26 @@ def generate(
         conversation_history.insert(0, {"role": "system", "content": system_prompt})
 
     headers = {"Authorization": f"Bearer {os.environ.get('OPENROUTER')}"}
-    payload = json.dumps({
-        "messages": conversation_history,
-        "model": model,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "frequency_penalty": frequency_penalty,
-        "presence_penalty": presence_penalty,
-        "repetition_penalty": repetition_penalty,
-        "top_k": top_k,
-        "stream": True,
-    })
+    payload = json.dumps(
+        {
+            "messages": conversation_history,
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
+            "repetition_penalty": repetition_penalty,
+            "top_k": top_k,
+            "stream": True,
+        }
+    )
 
     try:
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             data=payload,
-            stream=True
+            stream=True,
         )
         completion = ""
         for line in response.iter_lines(decode_unicode=True, chunk_size=1):
@@ -92,13 +95,19 @@ def generate(
                 modified_value: str = re.sub("data:", "", line)
                 try:
                     json_modified_value = json.loads(modified_value)
-                    completion += json_modified_value['choices'][0]['delta']['content']
-                    if stream: print(json_modified_value['choices'][0]['delta']['content'], end="", flush=True)
+                    completion += json_modified_value["choices"][0]["delta"]["content"]
+                    if stream:
+                        print(
+                            json_modified_value["choices"][0]["delta"]["content"],
+                            end="",
+                            flush=True,
+                        )
                 except json.JSONDecodeError:
                     continue
         return completion
     except requests.RequestException as e:
         return f"Failed to Get Response\nError: {e}\nResponse: {response.text}"
+
 
 if __name__ == "__main__":
     # Example usage with conversation history and system prompt
@@ -107,12 +116,9 @@ if __name__ == "__main__":
         {"role": "assistant", "content": "Hi Clara! How can I help you today?"},
         {"role": "user", "content": "What is my name?"},
     ]
-    
+
     response = generate(conversation, system_prompt="Talk Like Shakesphere")
     print("\n\n" + response)
-
-
-
 
 
 "**************************************************************************"
@@ -160,7 +166,7 @@ if __name__ == "__main__":
 #         - "openchat/openchat-7b"
 #         - "huggingfaceh4/zephyr-7b-beta"
 #         - "mistralai/mistral-7b-instruct:free"
-    
+
 #     - Flagship Opensource:
 #         - "meta-llama/llama-3-8b-instruct:extended"
 #         - "lynn/soliloquy-l3"
@@ -181,12 +187,12 @@ if __name__ == "__main__":
 #         "Authorization": f"Bearer {os.environ.get('OPENROUTER')}",
 #       },
 #       data=json.dumps({
-          
+
 #         "messages": [
 #           {"role": "system", "content": system_prompt},
 #           {"role": "user", "content": query},
 #         ],
-        
+
 #         "model": model,
 #         "max_tokens": max_tokens,
 #         "temperature": temperature,
@@ -197,7 +203,6 @@ if __name__ == "__main__":
 
 #       }))
 
-        
 
 #     try: return response.json()["choices"][0]["message"]["content"].strip()
 #     except Exception as e: return f"Failed to Get Response\nError: {e}\nResponse: {response.text}"

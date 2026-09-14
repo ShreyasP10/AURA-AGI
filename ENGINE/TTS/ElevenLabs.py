@@ -1,6 +1,6 @@
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 
 import playsound
 import requests
@@ -15,7 +15,7 @@ class ElevenLabsAPI:
     This class provides functionalities to synthesize speech from text using various voices
     provided by ElevenLabs, utilizing a pool of proxy servers for enhanced reliability.
 
-    Voices: 
+    Voices:
             "charlottee": "XB0fDUnXU5powFXDhCwa",
             "daniel": "onwK4e9ZLuTAKqWW03F9",
             "callum": "N2lVS1w4EtoT3dr4eOWO",
@@ -48,20 +48,20 @@ class ElevenLabsAPI:
         self.model_id: str = model_id
         self.base_url: str = "https://api.elevenlabs.io/v1/text-to-speech"
         self.headers: Dict[str, str] = {
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
-            'Content-Type': 'application/json',
-            'Dnt': '1',
-            'Origin': 'https://elevenlabs.io',
-            'Priority': 'u=1, i',
-            'Referer': 'https://elevenlabs.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
-            'Sec-Ch-Ua-Mobile': '?0',
-            'Sec-Ch-Ua-Platform': '"Windows"',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
+            "Content-Type": "application/json",
+            "Dnt": "1",
+            "Origin": "https://elevenlabs.io",
+            "Priority": "u=1, i",
+            "Referer": "https://elevenlabs.io/",
+            "Sec-Ch-Ua": '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-site",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         }
         self.voice_ids: Dict[str, str] = {
             "charlottee": "XB0fDUnXU5powFXDhCwa",
@@ -80,7 +80,7 @@ class ElevenLabsAPI:
             "grace": "oWAxZDx7w5VEj9dCyTzz",
             "harry": "SOYHLrjzK2X1ezoPC6cr",
             "james": "ZQe5CZNOzWyzPSCn5a3c",
-            "jeremy": "bVMeCyTHy58xNoL34h3p"
+            "jeremy": "bVMeCyTHy58xNoL34h3p",
         }
         self.session: requests.Session = requests.Session()  # Create a session
 
@@ -91,11 +91,13 @@ class ElevenLabsAPI:
         Returns:
             List[str]: A list of proxy server addresses.
         """
-        with open(self.filename, 'r') as f:
+        with open(self.filename, "r") as f:
             proxies = f.read().split("\n")[:-1]
         return proxies
 
-    def make_request(self, proxy: str, payload: Dict[str, str], voice_id: str) -> Optional[requests.Response]:
+    def make_request(
+        self, proxy: str, payload: Dict[str, str], voice_id: str
+    ) -> Optional[requests.Response]:
         """
         Makes a request to the ElevenLabs API using a specific proxy server.
 
@@ -110,7 +112,9 @@ class ElevenLabsAPI:
         proxies = {"http": f"http://{proxy}", "https": f"http://{proxy}"}
         url = f"{self.base_url}/{voice_id}/stream"
         try:
-            response = self.session.post(url, headers=self.headers, json=payload, proxies=proxies, timeout=7)
+            response = self.session.post(
+                url, headers=self.headers, json=payload, proxies=proxies, timeout=7
+            )
             if response.status_code == 200:
                 return response
             else:
@@ -120,8 +124,9 @@ class ElevenLabsAPI:
             print(f"Proxy {proxy} failed with error: {e}.")
             return None
 
-    def fetch_response_with_proxies(self, payload: Dict[str, str],
-                                    voice_id: str) -> Optional[requests.Response]:
+    def fetch_response_with_proxies(
+        self, payload: Dict[str, str], voice_id: str
+    ) -> Optional[requests.Response]:
         """
         Fetches the API response by iterating through a list of proxy servers.
 
@@ -135,18 +140,27 @@ class ElevenLabsAPI:
         proxies = self.get_proxies_list()
         while True:  # Retry loop
             with ThreadPoolExecutor(max_workers=10) as executor:
-                future_to_proxy = {executor.submit(self.make_request, proxy, payload, voice_id): proxy for proxy in
-                                   proxies}
+                future_to_proxy = {
+                    executor.submit(self.make_request, proxy, payload, voice_id): proxy
+                    for proxy in proxies
+                }
                 for future in as_completed(future_to_proxy):
                     response = future.result()
                     if response:
                         return response
-            print("\033[91mNo response obtained from API. Retrying with a new set of proxies...\033[0m")
+            print(
+                "\033[91mNo response obtained from API. Retrying with a new set of proxies...\033[0m"
+            )
             get_proxies()
             proxies = self.get_proxies_list()  # Update proxies for the retry
 
-    def speak(self, text: str, voice_name: Optional[str] = None, voice_id: Optional[str] = None,
-              filename: Optional[str] = "ASSETS/ElevenLabs_response.mp3") -> None:
+    def speak(
+        self,
+        text: str,
+        voice_name: Optional[str] = None,
+        voice_id: Optional[str] = None,
+        filename: Optional[str] = "ASSETS/ElevenLabs_response.mp3",
+    ) -> None:
         """
         Synthesizes speech from text using the specified voice and plays it aloud.
 
@@ -161,18 +175,18 @@ class ElevenLabsAPI:
             voice_id = self.voice_ids.get(voice_name.lower())
             if not voice_id:
                 print(
-                    f"Invalid voice name: {voice_name}. Please choose from: {', '.join(self.voice_ids.keys())}")
+                    f"Invalid voice name: {voice_name}. Please choose from: {', '.join(self.voice_ids.keys())}"
+                )
                 return
 
         if not voice_id:
             print("Please specify either a voice name or a voice ID.")
             return
 
-        payload: Dict[str, str] = {
-            "text": text,
-            "model_id": self.model_id
-        }
-        response: Optional[requests.Response] = self.fetch_response_with_proxies(payload, voice_id)
+        payload: Dict[str, str] = {"text": text, "model_id": self.model_id}
+        response: Optional[requests.Response] = self.fetch_response_with_proxies(
+            payload, voice_id
+        )
 
         if response:
             print("\033[92m" + "Successfully obtained response from API." + "\033[0m")
@@ -183,8 +197,6 @@ class ElevenLabsAPI:
             playsound.playsound(filename)
 
 
-
-
 "****************************************************"
 
 # This Code will not Run in this File Due to Circular Imports
@@ -192,13 +204,14 @@ class ElevenLabsAPI:
 "****************************************************"
 
 
-
 if __name__ == "__main__":
     import time
+
     api = ElevenLabsAPI()
     if True:
         start_time = time.time()
-        api.speak(text="""तूफ़ानों से आँख मिलाओ, सैलाबों पर वार करो
+        api.speak(
+            text="""तूफ़ानों से आँख मिलाओ, सैलाबों पर वार करो
 मल्लाहों का चक्कर छोड़ो, तैर के दरिया पार करो
 
 ऐसी सर्दी है कि सूरज भी दुहाई मांगे
@@ -209,7 +222,8 @@ if __name__ == "__main__":
 
 जुबां तो खोल, नजर तो मिला, जवाब तो दे
 मैं कितनी बार लुटा हूँ, हिसाब तो दे""",
-                  voice_name="callum")
+            voice_name="callum",
+        )
 
         response_time = time.time() - start_time
         print("\033[91m" + f"Response time: {response_time:.2f} seconds" + "\033[0m")

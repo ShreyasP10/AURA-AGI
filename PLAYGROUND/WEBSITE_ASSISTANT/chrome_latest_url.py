@@ -2,6 +2,7 @@ import sqlite3
 import os
 import shutil
 
+
 def get_latest_chrome_url() -> str:
     """
     Retrieves the URL of the most recent webpage visited in Google Chrome.
@@ -9,10 +10,15 @@ def get_latest_chrome_url() -> str:
     Returns:
         str: The URL of the most recent webpage visited in Google Chrome.
     """
-    chrome_history_path = os.path.expanduser('~') + r"\AppData\Local\Google\Chrome\User Data\Default\History"
+    chrome_history_path = (
+        os.path.expanduser("~")
+        + r"\AppData\Local\Google\Chrome\User Data\Default\History"
+    )
     if not os.path.exists(chrome_history_path):
-        raise FileNotFoundError(f"Chrome History not found: {chrome_history_path} (Windows Chrome only, close Chrome first if locked)")
-    
+        raise FileNotFoundError(
+            f"Chrome History not found: {chrome_history_path} (Windows Chrome only, close Chrome first if locked)"
+        )
+
     # Destination path for the copy of the history file
     history_db_path = os.path.join(os.getcwd(), "ChromeHistoryCopy.txt")
 
@@ -44,6 +50,7 @@ def get_latest_chrome_url() -> str:
                 os.remove(history_db_path)
         except Exception:
             pass
+
 
 if __name__ == "__main__":
     latest_url = get_latest_chrome_url()

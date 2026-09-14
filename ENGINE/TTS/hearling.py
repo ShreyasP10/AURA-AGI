@@ -5,8 +5,8 @@ import aiofiles
 import os
 import random
 import urllib.request
-from TOOLS.AUDIO import Interrupted_Playsound
 import concurrent.futures
+
 
 class Async_HearlingAudioGenerator:
     """
@@ -20,7 +20,7 @@ class Async_HearlingAudioGenerator:
         """
         Initializes the HearlingAudioGenerator with an email prefix.
 
-        Creates a requests session for faster requests. 
+        Creates a requests session for faster requests.
 
         Args:
             email_prefix (str): The prefix for generating random email addresses for account creation.
@@ -41,11 +41,13 @@ class Async_HearlingAudioGenerator:
             str: The authentication token for the newly created account.
         """
         email = f"{self.email_prefix}{random.randint(1, 99999)}@gmail.com"
-        headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36"}
+        headers = {
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36"
+        }
         payload = {"email": email, "password": "AURA-Team"}
         response = self.session.post(self.url_accounts, json=payload, headers=headers)
         response.raise_for_status()
-        return response.json()['token']
+        return response.json()["token"]
 
     async def download_audio(self, audio_url, filename):
         """
@@ -60,11 +62,17 @@ class Async_HearlingAudioGenerator:
         async with aiohttp.ClientSession() as session:
             async with session.get(audio_url) as response:
                 response.raise_for_status()
-                f = await aiofiles.open(filename, mode='wb')
+                f = await aiofiles.open(filename, mode="wb")
                 await f.write(await response.read())
                 await f.close()
 
-    async def _generate_and_play_audio(self, text: str, voice: str, filename: str = "audio_file.mp3", prints: bool = False):
+    async def _generate_and_play_audio(
+        self,
+        text: str,
+        voice: str,
+        filename: str = "audio_file.mp3",
+        prints: bool = False,
+    ):
         """
         Generates and plays audio from text using the Hearling API.
 
@@ -77,20 +85,30 @@ class Async_HearlingAudioGenerator:
             filename (str): The temporary file to save the audio output.
             prints (bool): Whether to print debugging information, such as the audio URL.
         """
-        headers = {"Authorization": f"Bearer {self.token}", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36"}
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36",
+        }
         payload = {"text": text, "voice": voice}
         response = self.session.post(self.url_clips, headers=headers, json=payload)
         response.raise_for_status()
 
-        audio_url = response.json()['clip']['location']
-        if prints: print(f"Audio URL: {audio_url}")
+        audio_url = response.json()["clip"]["location"]
+        if prints:
+            print(f"Audio URL: {audio_url}")
 
         await self.download_audio(audio_url, filename)
 
         # Interrupted_Playsound.play_audio(filename)
         os.remove(filename)
 
-    def speak(self, text: str, voice: str = "hi-IN-Wavenet-A", filename: str = "audio_file.mp3", prints: bool = False):
+    def speak(
+        self,
+        text: str,
+        voice: str = "hi-IN-Wavenet-A",
+        filename: str = "audio_file.mp3",
+        prints: bool = False,
+    ):
         """
         Generates and plays audio from text using the Hearling API.
         This function handles the asyncio execution and account creation after playback.
@@ -105,17 +123,11 @@ class Async_HearlingAudioGenerator:
         self.token = self.create_account()  # Update token after audio playback
 
 
-
-
-
 "************************************************************"
 
 """Deprecated Code - No Asyncio which make the response slower"""
 
 "************************************************************"
-
-
-
 
 
 class HearlingAudioGenerator:
@@ -154,9 +166,15 @@ class HearlingAudioGenerator:
         payload = {"email": email, "password": "AURA-Team"}
         response = self.session.post(self.url_accounts, json=payload)
         response.raise_for_status()
-        return response.json()['token']
+        return response.json()["token"]
 
-    def speak(self, text: str, voice: str = "hi-IN-Wavenet-D", filename: str = "audio_file.mp3", prints: bool = False):
+    def speak(
+        self,
+        text: str,
+        voice: str = "hi-IN-Wavenet-D",
+        filename: str = "audio_file.mp3",
+        prints: bool = False,
+    ):
         """
         Generates and plays audio from text using the Hearling API.
 
@@ -174,16 +192,14 @@ class HearlingAudioGenerator:
         response = self.session.post(self.url_clips, headers=headers, json=payload)
         response.raise_for_status()
 
-        audio_url = response.json()['clip']['location']
+        audio_url = response.json()["clip"]["location"]
         urllib.request.urlretrieve(audio_url, filename)
-        if prints: print(f"Audio URL: {audio_url}")
+        if prints:
+            print(f"Audio URL: {audio_url}")
 
         # Interrupted_Playsound.play_audio(filename)
         os.remove(filename)
         self.token = self.create_account()  # Create a new account after audio playback
-
-
-
 
 
 "************************************************************"
@@ -191,8 +207,6 @@ class HearlingAudioGenerator:
 """Deprecated Code - No Asyncio which make the response slower"""
 
 "************************************************************"
-
-
 
 
 class Partial_Async_HearlingAudioGenerator:
@@ -232,7 +246,7 @@ class Partial_Async_HearlingAudioGenerator:
         payload = {"email": email, "password": "AURA-Team"}
         response = self.session.post(self.url_accounts, json=payload)
         response.raise_for_status()
-        return response.json()['token']
+        return response.json()["token"]
 
     def update_token_async(self):
         """
@@ -250,7 +264,13 @@ class Partial_Async_HearlingAudioGenerator:
         """
         self.token = future.result()
 
-    def speak(self, text: str, voice: str = "hi-IN-Wavenet-D", filename: str = "ASSETS/audio_file.mp3", prints: bool = False):
+    def speak(
+        self,
+        text: str,
+        voice: str = "hi-IN-Wavenet-D",
+        filename: str = "ASSETS/audio_file.mp3",
+        prints: bool = False,
+    ):
         """
         Generates and plays audio from text using the Hearling API.
 
@@ -268,15 +288,15 @@ class Partial_Async_HearlingAudioGenerator:
         response = self.session.post(self.url_clips, headers=headers, json=payload)
         response.raise_for_status()
 
-        audio_url = response.json()['clip']['location']
+        audio_url = response.json()["clip"]["location"]
         urllib.request.urlretrieve(audio_url, filename)
-        if prints: print(f"Audio URL: {audio_url}")
+        if prints:
+            print(f"Audio URL: {audio_url}")
 
         # Interrupted_Playsound.play_audio(filename)
         os.remove(filename)
 
         self.update_token_async()  # Update the token asynchronously after generating the audio
-
 
 
 # if __name__ == "__main__":
@@ -286,8 +306,10 @@ class Partial_Async_HearlingAudioGenerator:
 
 
 if __name__ == "__main__":
-    generator = Partial_Async_HearlingAudioGenerator()  # Create an instance of the class
-    text_to_speak = 'सूरज की किरणें धीरे-धीरे  पेड़ों के पत्तों के बीच से झाँक रही थीं'
+    generator = (
+        Partial_Async_HearlingAudioGenerator()
+    )  # Create an instance of the class
+    text_to_speak = "सूरज की किरणें धीरे-धीरे  पेड़ों के पत्तों के बीच से झाँक रही थीं"
     generator.speak(text_to_speak)
 
 

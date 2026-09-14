@@ -5,8 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class HuggingChat_RE:
-    def __init__(self, hf_chat: str = os.environ.get("HUGGING_CHAT_ID"), model: str = "meta-llama/Meta-Llama-3-70B-Instruct") -> None:
+    def __init__(
+        self,
+        hf_chat: str = os.environ.get("HUGGING_CHAT_ID"),
+        model: str = "meta-llama/Meta-Llama-3-70B-Instruct",
+    ) -> None:
         """
         Initializes an instance of the HuggingChat_RE class.
 
@@ -37,8 +42,11 @@ class HuggingChat_RE:
         url = "https://huggingface.co/chat/conversation"
         payload = {"model": self.model}
         response = requests.post(url, json=payload, headers=self.headers).json()
-        print("\033[92m" + "Initialised Conversation ID:", response['conversationId'] + "\033[0m")
-        return response['conversationId']
+        print(
+            "\033[92m" + "Initialised Conversation ID:",
+            response["conversationId"] + "\033[0m",
+        )
+        return response["conversationId"]
 
     def find_message_id(self) -> str:
         """
@@ -50,10 +58,15 @@ class HuggingChat_RE:
 
         url = f"https://huggingface.co/chat/conversation/{self.conversationId}/__data.json?x-sveltekit-invalidated=11"
         response = requests.get(url, headers=self.headers).json()
-        print("\033[92m" + "Initialised Message ID:", response['nodes'][1]['data'][3] + "\033[0m")
-        return response['nodes'][1]['data'][3]
+        print(
+            "\033[92m" + "Initialised Message ID:",
+            response["nodes"][1]["data"][3] + "\033[0m",
+        )
+        return response["nodes"][1]["data"][3]
 
-    def generate(self, query: str, web_search: bool = False, files=[], stream: bool = True) -> str:
+    def generate(
+        self, query: str, web_search: bool = False, files=[], stream: bool = True
+    ) -> str:
         """
         Generates a response for the given query using the Hugging Face chat.
 
@@ -74,9 +87,8 @@ class HuggingChat_RE:
             "is_retry": False,
             "is_continue": False,
             "web_search": web_search,
-            "files": files
+            "files": files,
         }
-
 
         response = requests.post(url, json=payload, headers=self.headers, stream=True)
         complete_response = ""
@@ -84,17 +96,18 @@ class HuggingChat_RE:
             if chunk:
                 try:
                     json_data = json.loads(chunk.decode("utf-8"))
-                    if json_data['type'] == "stream":
-                        if stream: print(json_data['token'], end="", flush=True)
-                        complete_response += json_data['token']
+                    if json_data["type"] == "stream":
+                        if stream:
+                            print(json_data["token"], end="", flush=True)
+                        complete_response += json_data["token"]
                 except Exception:
                     continue
 
         return complete_response
 
+
 # Example Usage
 if __name__ == "__main__":
-
     hf_api = HuggingChat_RE(model="microsoft/Phi-3-mini-4k-instruct")
     # while True:
     #     query = '\033[96m' + input("\n> ") + '\033[0m'  # cyan
@@ -103,14 +116,14 @@ if __name__ == "__main__":
     #     # print(response)
 
     models = {
-    "meta-llama/Meta-Llama-3-70B-Instruct": "https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct",
-    "HuggingFaceH4/zephyr-orpo-141b-A35b-v0.1": "https://huggingface.co/HuggingFaceH4/zephyr-orpo-141b-A35b-v0.1",
-    "CohereForAI/c4ai-command-r-plus": "https://huggingface.co/CohereForAI/c4ai-command-r-plus",
-    "mistralai/Mixtral-8x7B-Instruct-v0.1": "https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO": "https://huggingface.co/NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
-    "google/gemma-1.1-7b-it": "https://huggingface.co/google/gemma-1.1-7b-it",
-    "mistralai/Mistral-7B-Instruct-v0.2": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2",
-    "microsoft/Phi-3-mini-4k-instruct": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct"
+        "meta-llama/Meta-Llama-3-70B-Instruct": "https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct",
+        "HuggingFaceH4/zephyr-orpo-141b-A35b-v0.1": "https://huggingface.co/HuggingFaceH4/zephyr-orpo-141b-A35b-v0.1",
+        "CohereForAI/c4ai-command-r-plus": "https://huggingface.co/CohereForAI/c4ai-command-r-plus",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1": "https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO": "https://huggingface.co/NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
+        "google/gemma-1.1-7b-it": "https://huggingface.co/google/gemma-1.1-7b-it",
+        "mistralai/Mistral-7B-Instruct-v0.2": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2",
+        "microsoft/Phi-3-mini-4k-instruct": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct",
     }
 
     for name, url in models.items():

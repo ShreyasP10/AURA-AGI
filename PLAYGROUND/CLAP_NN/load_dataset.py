@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 from torchvision.transforms import Resize
 import torchaudio.transforms as T
 
+
 def get_wav_files(directory: str) -> list:
     """
     Get a list of WAV file paths in the given directory.
@@ -21,10 +22,12 @@ def get_wav_files(directory: str) -> list:
         if filename.endswith(".wav")
     ]
 
+
 class AudioDataset(Dataset):
     """
     Dataset for audio classification.
     """
+
     def __init__(self, noise_dir: str, clap_dir: str) -> None:
         """
         Initializes the AudioDataset.
@@ -47,7 +50,9 @@ class AudioDataset(Dataset):
         """
         return len(self.file_list)
 
-    def __getitem__(self, idx: int, n_mels: int = 64, n_fft: int = 400, hop_length: int = 200) -> tuple:
+    def __getitem__(
+        self, idx: int, n_mels: int = 64, n_fft: int = 400, hop_length: int = 200
+    ) -> tuple:
         """
         Gets the item at the specified index.
 

@@ -1,5 +1,6 @@
 import requests
 
+
 def fetch_website_content(search_url: str) -> str:
     """Fetches the content of a webpage.
 
@@ -18,6 +19,7 @@ def fetch_website_content(search_url: str) -> str:
     response = requests.get(f"{jinna_url}/{search_url}").text
     print("Fetched the Website content")
     return response
+
 
 if __name__ == "__main__":
     search_url = "https://www.ndtv.com/india-news/several-maoists-killed-in-encounter-with-security-forces-in-chhattisgarh-5455181"

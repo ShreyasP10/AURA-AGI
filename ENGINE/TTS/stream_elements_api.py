@@ -3,6 +3,7 @@ import playsound
 import os
 from typing import Union
 
+
 def generate_audio(message: str, voice: str = "Brian"):
     """
     Text to speech using StreamElements API
@@ -16,9 +17,11 @@ def generate_audio(message: str, voice: str = "Brian"):
     """
     # Base URL for provider API
     url: str = f"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={{{message}}}"
-    
+
     # Request headers
-    headers =  {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    }
 
     # Try to send request or return None on failure
     try:
@@ -26,8 +29,11 @@ def generate_audio(message: str, voice: str = "Brian"):
         return result.content
     except Exception:
         return None
-    
-def speak(message: str, voice: str = "Brian", folder: str = "", extension: str = ".mp3") -> Union[None, str]:
+
+
+def speak(
+    message: str, voice: str = "Brian", folder: str = "", extension: str = ".mp3"
+) -> Union[None, str]:
     """
     Save the result content to a file and play it using the playsound module.
 
@@ -49,7 +55,10 @@ def speak(message: str, voice: str = "Brian", folder: str = "", extension: str =
         return None
     except Exception as e:
         return "Error playing TTS: " + str(e)
-    
 
-if __name__ == "__main__": 
-    speak("Thank you for watching! I hope you found this video informative and helpful. If you did, please give it a thumbs up and consider subscribing to my channel for more videos like this", voice="Salli")
+
+if __name__ == "__main__":
+    speak(
+        "Thank you for watching! I hope you found this video informative and helpful. If you did, please give it a thumbs up and consider subscribing to my channel for more videos like this",
+        voice="Salli",
+    )

@@ -1,6 +1,7 @@
 import requests
 import json
 import uuid
+
 try:
     from TOOLS.LE_CHAT_COOKIES.Cookie_Extractor import get_ory_session_cookie
 except ModuleNotFoundError:
@@ -8,8 +9,13 @@ except ModuleNotFoundError:
     try:
         from LE_CHAT_COOKIES.Cookie_Extractor import get_ory_session_cookie  # type: ignore
     except Exception:
+
         def get_ory_session_cookie(*a, **k):
-            raise ImportError("Cookie_Extractor not found. Check TOOLS/LE_CHAT_COOKIES path.")
+            raise ImportError(
+                "Cookie_Extractor not found. Check TOOLS/LE_CHAT_COOKIES path."
+            )
+
+
 from dotenv import load_dotenv
 import os
 
@@ -29,7 +35,11 @@ class LeChat:
         headers (dict): The HTTP headers to send with each request.
     """
 
-    def __init__(self, chat_id: str = "ffd662bc-20a6-4fc8-a133-7994485df0de", model: str = "codestral"):
+    def __init__(
+        self,
+        chat_id: str = "ffd662bc-20a6-4fc8-a133-7994485df0de",
+        model: str = "codestral",
+    ):
         """
         Initializes a new LeChat object.
 
@@ -46,7 +56,7 @@ class LeChat:
         self.url: str = "https://chat.mistral.ai/api/chat"
         self.chat_id: str = chat_id
         self.model: str = model
-        self.env_file: str = '.env'
+        self.env_file: str = ".env"
         self.session: requests.Session = requests.Session()  # Create a session object
         self.headers: dict = {
             "Cookie": f"ory_session_coolcurranf83m3srkfl={os.environ.get('ORY_SESSION_COOKIE')}="
@@ -61,13 +71,13 @@ class LeChat:
 
     def _update_env_file(self, new_cookie_value: str) -> None:
         """Updates the .env file with the new cookie value."""
-        with open(self.env_file, 'r') as file:
+        with open(self.env_file, "r") as file:
             lines: list = file.readlines()
 
-        with open(self.env_file, 'w') as file:
+        with open(self.env_file, "w") as file:
             for line in lines:
-                if line.startswith('ORY_SESSION_COOKIE='):
-                    file.write(f'ORY_SESSION_COOKIE={new_cookie_value}\n')
+                if line.startswith("ORY_SESSION_COOKIE="):
+                    file.write(f"ORY_SESSION_COOKIE={new_cookie_value}\n")
                 else:
                     file.write(line)
 
@@ -86,24 +96,31 @@ class LeChat:
             "messageId": str(uuid.uuid4()),
             "model": self.model,
             "messageInput": message,
-            "mode": "append"
+            "mode": "append",
         }
 
         while True:
-            response: requests.Response = self.session.post(  # Use the session object for requests
-                self.url, headers=self.headers, data=json.dumps(payload), stream=True
+            response: requests.Response = (
+                self.session.post(  # Use the session object for requests
+                    self.url,
+                    headers=self.headers,
+                    data=json.dumps(payload),
+                    stream=True,
+                )
             )
             if response.status_code == 200:
-                complete_final_response: str = ''
+                complete_final_response: str = ""
                 for line in response.iter_lines(decode_unicode=True, chunk_size=1):
                     if line.startswith("0:"):
                         complete_final_response += line[3:-1]
-                        print(line[3:-1], end='', flush=True)
+                        print(line[3:-1], end="", flush=True)
 
                 return complete_final_response
 
             elif response.status_code == 401:
-                print("\033[91mCookie Expired... Trying to Refresh it. Please Wait...\033[0m")
+                print(
+                    "\033[91mCookie Expired... Trying to Refresh it. Please Wait...\033[0m"
+                )
                 print(f"\033[91mOld Cookie: {self.headers['Cookie']}\033[0m")
                 self._refresh_cookie()
                 print(f"\033[92mNew Cookie: {self.headers['Cookie']}\033[0m")

@@ -1,7 +1,8 @@
 import os
 import shutil
 
-def delete_stream_audio_files(folder_path='ASSETS/STREAM_AUDIOS') -> None:
+
+def delete_stream_audio_files(folder_path="ASSETS/STREAM_AUDIOS") -> None:
     """
     Deletes all files inside the ASSETS/STREAM_AUDIOS folder.
 

@@ -1,14 +1,16 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
-from load_dataset import AudioDataset 
-from cnn_sound_model import AudioClassifier 
-from typing import Tuple, List
+from load_dataset import AudioDataset
+from cnn_sound_model import AudioClassifier
+from typing import Tuple
+
 
 class AudioClassifierTrainer:
     """
     Trainer class for the AudioClassifier model.
     """
+
     def __init__(self, noise_dir: str, clap_dir: str, device: torch.device) -> None:
         """
         Initializes the AudioClassifierTrainer.
@@ -23,7 +25,9 @@ class AudioClassifierTrainer:
         self.train_dataloader, self.val_dataloader = self.prepare_dataloaders()
         self.model = AudioClassifier().to(self.device)
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-5, weight_decay=0.02)
+        self.optimizer = torch.optim.AdamW(
+            self.model.parameters(), lr=1e-5, weight_decay=0.02
+        )
 
     def prepare_dataloaders(self) -> Tuple[DataLoader, DataLoader]:
         """
@@ -47,9 +51,13 @@ class AudioClassifierTrainer:
             num_epochs (int): Number of epochs to train.
         """
         for epoch in range(num_epochs):
-            train_loss, train_accuracy = self.run_epoch(self.train_dataloader, training=True)
+            train_loss, train_accuracy = self.run_epoch(
+                self.train_dataloader, training=True
+            )
             val_loss, val_accuracy = self.run_epoch(self.val_dataloader, training=False)
-            print(f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+            print(
+                f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}"
+            )
         self.save_model("Clap_Detect_Model.pth")
 
     def run_epoch(self, dataloader: DataLoader, training: bool) -> Tuple[float, float]:
@@ -101,8 +109,13 @@ class AudioClassifierTrainer:
         """
         torch.save(self.model.state_dict(), path)
 
+
 if __name__ == "__main__":
     torch.manual_seed(42)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    trainer = AudioClassifierTrainer("PLAYGROUND/CLAP_NN/DATASETS/noise2", "PLAYGROUND/CLAP_NN/DATASETS/claps", device)
+    trainer = AudioClassifierTrainer(
+        "PLAYGROUND/CLAP_NN/DATASETS/noise2",
+        "PLAYGROUND/CLAP_NN/DATASETS/claps",
+        device,
+    )
     trainer.train(num_epochs=5)

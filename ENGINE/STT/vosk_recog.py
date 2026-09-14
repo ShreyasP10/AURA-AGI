@@ -3,7 +3,10 @@ import pyaudio
 from vosk import Model, KaldiRecognizer
 import ast
 
-def speech_to_text(prints: bool = True, model_path: str = r"ASSETS\Vosk\vosk-model-small-en-us-0.15") -> Generator[str, None, None]:
+
+def speech_to_text(
+    prints: bool = True, model_path: str = r"ASSETS\Vosk\vosk-model-small-en-us-0.15"
+) -> Generator[str, None, None]:
     """
     Asynchronously transcribes continuous speech into text using the Vosk library and PyAudio.
 
@@ -32,7 +35,13 @@ def speech_to_text(prints: bool = True, model_path: str = r"ASSETS\Vosk\vosk-mod
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
-    stream = audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8192)
+    stream = audio.open(
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=16000,
+        input=True,
+        frames_per_buffer=8192,
+    )
     stream.start_stream()
 
     try:
@@ -40,22 +49,38 @@ def speech_to_text(prints: bool = True, model_path: str = r"ASSETS\Vosk\vosk-mod
             data = stream.read(8192, exception_on_overflow=False)
             if recognizer.AcceptWaveform(data):
                 result = recognizer.Result()
-                try: result_dict = ast.literal_eval(result)
-                except Exception: continue
-                if 'text' in result_dict:
-                    if prints: print("\rTranscript: " + result_dict['text'])
-                    yield result_dict['text'].lower()
+                try:
+                    result_dict = ast.literal_eval(result)
+                except Exception:
+                    continue
+                if "text" in result_dict:
+                    if prints:
+                        print("\rTranscript: " + result_dict["text"])
+                    yield result_dict["text"].lower()
             else:
                 if prints:
-                    try: print("\rSpeaking: " + recognizer.PartialResult().split('"')[-2], end='', flush=True)
-                    except Exception: pass
+                    try:
+                        print(
+                            "\rSpeaking: " + recognizer.PartialResult().split('"')[-2],
+                            end="",
+                            flush=True,
+                        )
+                    except Exception:
+                        pass
     finally:
-        try: stream.stop_stream(); stream.close(); audio.terminate()
-        except Exception: pass
+        try:
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
     for speech in speech_to_text():
         if "stop" in speech:
-            print("Speech: ", speech)  # The actual printing is handled within the function now
+            print(
+                "Speech: ", speech
+            )  # The actual printing is handled within the function now
             print("Broken....")
             break

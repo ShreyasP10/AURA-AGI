@@ -2,10 +2,11 @@ import requests
 from typing import Optional, Dict, List
 import time
 
+
 def generate(
-        conversation_history: List[Dict[str, str]],
-        system_prompt: Optional[str] = "Be Helpful and Friendly"
-    ) -> str:
+    conversation_history: List[Dict[str, str]],
+    system_prompt: Optional[str] = "Be Helpful and Friendly",
+) -> str:
     """
     Interacts with the BasedGPT API to generate a response based on a given conversation history.
 
@@ -36,10 +37,13 @@ def generate(
 
     return complete_response
 
+
 if __name__ == "__main__":
     # Example usage
     conversation_history = [{"role": "user", "content": "write 10 lines on India"}]
     start_time = time.time()
     response = generate(conversation_history)
     end_time = time.time()
-    print(f"\033[92m\n\nResponse took {end_time - start_time:.2f} seconds to generate.\033[0m")
+    print(
+        f"\033[92m\n\nResponse took {end_time - start_time:.2f} seconds to generate.\033[0m"
+    )

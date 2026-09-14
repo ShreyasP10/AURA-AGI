@@ -4,6 +4,7 @@ pip install pytesseract pillow
 Requires Tesseract installed: https://github.com/UB-Mannheim/tesseract/wiki
 + fallback to deepInfra_VISION for cloud OCR
 """
+
 import os
 
 try:
@@ -40,6 +41,7 @@ except ImportError:
 def ocr_vision_live(prompt="Read all text in this image accurately"):
     from PLAYGROUND.CAMERA import camera_vision
     from BRAIN.AI.VISION import deepInfra_VISION
+
     path = camera_vision.realtime_vision()
     try:
         # try local first, fallback to vision

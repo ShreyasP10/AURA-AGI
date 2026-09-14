@@ -2,18 +2,19 @@ import json
 import requests
 from typing import Union, List, Dict
 
+
 def generate(
     conversation: Union[str, List[Dict[str, str]]],
-    model: str = 'meta-llama/Meta-Llama-3.1-405B-Instruct',
+    model: str = "meta-llama/Meta-Llama-3.1-405B-Instruct",
     system_prompt: str = "Be helpful and friendly. Keep your response straightforward, short, and concise.",
     max_tokens: int = 512,
     temperature: float = 0.7,
     stream: bool = True,
-    chunk_size: int = 1
+    chunk_size: int = 1,
 ) -> Union[str, None]:
     """
     Generates responses using various large language models (LLMs) for conversational interactions.
-    
+
     Args:
         conversation (Union[str, List[Dict[str, str]]]): A single user query or conversation history.
         model (str): The identifier of the LLM to be used.
@@ -29,7 +30,7 @@ def generate(
             - "meta-llama/Meta-Llama-3.1-8B-Instruct"
             - "nvidia/Nemotron-4-340B-Instruct"
             - "meta-llama/Meta-Llama-3-70B-Instruct"
-            - "meta-llama/Meta-Llama-3-8B-Instruct" 
+            - "meta-llama/Meta-Llama-3-8B-Instruct"
             - "mistralai/Mixtral-8x22B-Instruct-v0.1"
             - "mistralai/Mixtral-8x22B-v0.1"
             - "microsoft/WizardLM-2-8x22B"
@@ -46,7 +47,7 @@ def generate(
         Union[str, None]: The LLM's response if successful, otherwise None.
     """
     API_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
-    
+
     headers = {
         "Accept": "text/event-stream",
         "Accept-Encoding": "gzip, deflate, br, zstd",
@@ -57,9 +58,9 @@ def generate(
         "Host": "api.deepinfra.com",
         "Origin": "https://deepinfra.com",
         "Referer": "https://deepinfra.com/",
-        "Sec-Ch-Ua": "\"Google Chrome\";v=\"125\", \"Chromium\";v=\"125\", \"Not.A/Brand\";v=\"24\"",
+        "Sec-Ch-Ua": '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
         "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": "\"Windows\"",
+        "Sec-Ch-Ua-Platform": '"Windows"',
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site",
@@ -70,7 +71,9 @@ def generate(
     if isinstance(conversation, str):
         conversation = [{"role": "user", "content": conversation}]
     elif not isinstance(conversation, list):
-        raise ValueError("Conversation must be either a string or a list of dictionaries")
+        raise ValueError(
+            "Conversation must be either a string or a list of dictionaries"
+        )
 
     conversation.insert(0, {"role": "system", "content": system_prompt})
 
@@ -80,20 +83,24 @@ def generate(
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stop": [],
-        "stream": True
+        "stream": True,
     }
 
     try:
         response = requests.post(API_URL, headers=headers, json=payload, stream=True)
         response.raise_for_status()
-        
+
         full_response = ""
         for line in response.iter_lines(decode_unicode=True, chunk_size=chunk_size):
             if line.startswith("data:"):
                 try:
                     content = json.loads(line[5:])
                     if content != "[DONE]":
-                        delta_content = content.get("choices", [{}])[0].get("delta", {}).get("content")
+                        delta_content = (
+                            content.get("choices", [{}])[0]
+                            .get("delta", {})
+                            .get("content")
+                        )
                         if delta_content:
                             if stream:
                                 print(delta_content, end="", flush=True)
@@ -101,38 +108,36 @@ def generate(
 
                 except Exception:
                     continue
-        
+
         return full_response.strip()
-    
+
     except requests.RequestException as e:
         print(f"Error occurred during API request: {e}")
-        if hasattr(e.response, 'text'):
+        if hasattr(e.response, "text"):
             print(f"Response content: {e.response.text}")
         return None
+
 
 if __name__ == "__main__":
     # Example usage with a single query
     single_query = "What is the capital of France?"
-    response = generate(conversation=single_query, system_prompt="Be detailed", stream=True)
+    response = generate(
+        conversation=single_query, system_prompt="Be detailed", stream=True
+    )
     # print(f"\nGenerated Response: {response}")
-
-
-
 
     # Example usage with a conversation history
     conversation_history = [
         {"role": "user", "content": "My name is Shreyas."},
         {"role": "assistant", "content": "Nice to meet you, Shreyas."},
-        {"role": "user", "content": "What is my name?"}
+        {"role": "user", "content": "What is my name?"},
     ]
-    response = generate(conversation=conversation_history, system_prompt="Talk like Shakespeare", stream=True)
+    response = generate(
+        conversation=conversation_history,
+        system_prompt="Talk like Shakespeare",
+        stream=True,
+    )
     # print(f"\nGenerated Response: {response}")
-
-
-
-
-
-
 
 
 """DEPRECATED v1.2"""
@@ -148,7 +153,7 @@ if __name__ == "__main__":
 # def generate(conversation_history: list, model: str='meta-llama/Meta-Llama-3.1-405B-Instruct', system_prompt: str = "Be Helpful and Friendly. Keep your response straightforward, short and concise", max_tokens: int = 512, temperature: float = 0.7, stream: bool = True, chunk_size: int = 1) -> Union[str, None]:
 #     """
 #     Utilizes a variety of large language models (LLMs) to engage in conversational interactions.
-    
+
 #     Parameters:
 #         - conversation_history (list): A list of dictionaries representing the conversation history including the system prompt.
 #         - model (str): The name or identifier of the LLM to be used for conversation. Available models include various options.
@@ -160,7 +165,7 @@ if __name__ == "__main__":
 
 #     Models:
 #             - "meta-llama/Meta-Llama-3-70B-Instruct"
-#             - "meta-llama/Meta-Llama-3-8B-Instruct" 
+#             - "meta-llama/Meta-Llama-3-8B-Instruct"
 #             - "mistralai/Mixtral-8x22B-Instruct-v0.1"
 #             - "mistralai/Mixtral-8x22B-v0.1"
 #             - "microsoft/WizardLM-2-8x22B"
@@ -177,7 +182,7 @@ if __name__ == "__main__":
 #         - Union[str, None]: The response message from the LLM if successful, otherwise None.
 #     """
 #     api_url = "https://api.deepinfra.com/v1/openai/chat/completions"
-    
+
 #     headers = {
 #     "Accept": "text/event-stream",
 #     "Accept-Encoding": "gzip, deflate, br, zstd",
@@ -220,9 +225,9 @@ if __name__ == "__main__":
 #                     if json_modified_value["choices"][0]["delta"]["content"] != None:
 #                         if stream: print(json_modified_value["choices"][0]["delta"]["content"], end="")
 #                         streaming_text += json_modified_value["choices"][0]["delta"]["content"]
-#                 except: continue
+#                 except Exception: continue
 #         return streaming_text
-    
+
 #     except Exception as e:
 #         print("Error:", e)
 #         return "Response content: " + response.text
@@ -246,11 +251,6 @@ if __name__ == "__main__":
 #     print("\n\nGenerated Response:", response)
 
 
-
-
-
-
-
 """DEPRECATED v1.1"""
 
 # import json
@@ -263,7 +263,7 @@ if __name__ == "__main__":
 # def generate(conversation_history: list, model: str='meta-llama/Meta-Llama-3-70B-Instruct', system_prompt: str = "Be Helpful and Friendly. Keep your response straightforward, short and concise", max_tokens: int = 512, temperature: float = 0.7, stream: bool = True, chunk_size: int = 24) -> Union[str, None]:
 #     """
 #     Utilizes a variety of large language models (LLMs) to engage in conversational interactions.
-    
+
 #     Parameters:
 #         - conversation_history (list): A list of dictionaries representing the conversation history including the system prompt.
 #         - model (str): The name or identifier of the LLM to be used for conversation. Available models include various options.
@@ -280,7 +280,7 @@ if __name__ == "__main__":
 #     headers ={
 #         "Authorization" : f"Bearer {os.environ.get('DEEPINFRA')}"
 #     }
-    
+
 #     # Insert the system prompt at the beginning of the conversation history
 #     conversation_history.insert(0, {"role": "system", "content": system_prompt})
 
@@ -304,9 +304,9 @@ if __name__ == "__main__":
 #                     if json_modified_value["choices"][0]["delta"]["content"] != None:
 #                         if stream: print(json_modified_value["choices"][0]["delta"]["content"], end="")
 #                         streaming_text += json_modified_value["choices"][0]["delta"]["content"]
-#                 except: continue
+#                 except Exception: continue
 #         return streaming_text
-    
+
 #     except Exception as e:
 #         print("Error:", e)
 #         return "Response content: " + response.text
@@ -330,11 +330,6 @@ if __name__ == "__main__":
 #     print("\n\nGenerated Response:", response)
 
 
-
-
-
-
-
 """DEPRECATED v1.0"""
 
 # import json
@@ -347,11 +342,11 @@ if __name__ == "__main__":
 # def generate(message: str, model: str='meta-llama/Meta-Llama-3-70B-Instruct', system_prompt: str = "Be Helpful and Friendly. Keep your response straightfoward, short and concise", max_tokens: int = 512, temperature: float = 0.7, stream: bool = False, chunk_size: int = 24) -> Union[str, None]:
 #     """
 #     Utilizes a variety of large language models (LLMs) to engage in conversational interactions.
-    
+
 #     Parameters:
 #         - model (str): The name or identifier of the LLM to be used for conversation. Available models include:
 #             - "meta-llama/Meta-Llama-3-70B-Instruct"
-#             - "meta-llama/Meta-Llama-3-8B-Instruct" 
+#             - "meta-llama/Meta-Llama-3-8B-Instruct"
 #             - "mistralai/Mixtral-8x22B-Instruct-v0.1"
 #             - "mistralai/Mixtral-8x22B-v0.1"
 #             - "microsoft/WizardLM-2-8x22B"
@@ -389,7 +384,7 @@ if __name__ == "__main__":
 #         "stream": True
 #     }
 
-    
+
 #     try:
 #         response = requests.post(api_url, headers=headers, json=payload, stream=True)
 #         streaming_text = ""
@@ -401,13 +396,13 @@ if __name__ == "__main__":
 #                     if json_modified_value["choices"][0]["delta"]["content"] != None:
 #                         if stream: print(json_modified_value["choices"][0]["delta"]["content"], end="")
 #                         streaming_text += json_modified_value["choices"][0]["delta"]["content"]
-#                 except: continue
+#                 except Exception: continue
 #         return streaming_text
-    
+
 #     except Exception as e:
 #         print("Error:", e)
 #         return "Response content: " + response.text
-    
+
 
 # if __name__ == "__main__":
 
