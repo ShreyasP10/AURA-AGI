@@ -85,12 +85,40 @@ _threading.Thread(target=_tts_worker, daemon=True).start()
 
 def _speak_fast(text: str):
     """Non-blocking ordered speak; drops unspeakable/code-only chunks instantly."""
+    if os.environ.get("AURA_VOICE", "1") == "0":
+        return  # text-only mode: no TTS delay at all
     if not text or not text.strip():
         return
     try:
         _tts_queue.put_nowait(text.strip())
     except Exception:
         pass
+
+def _stop_speaking():
+    """Say 'stop' -> clear pending speech + halt current playback immediately."""
+    try:
+        while not _tts_queue.empty():
+            try:
+                _tts_queue.get_nowait()
+                _tts_queue.task_done()
+            except Exception:
+                break
+    except Exception:
+        pass
+    try:
+        import pygame
+        try:
+            pygame.mixer.music.stop()
+        except Exception:
+            pass
+        try:
+            pygame.mixer.quit()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+_STOP_WORDS = ("stop", "stop speaking", "quiet", "enough", "cancel", "shut up")
 
 # Instant replies: skip Groq round-trip (~1s) for common greetings
 _FAST_REPLIES = {
@@ -158,29 +186,94 @@ except Exception as _e:
 
 emo = "neutral"
 
-print(
-    "AURA ready. AURA_TEXT_MODE=1 uses keyboard (no mic/browser). AURA_BROWSER=chrome|brave, AURA_HEADLESS=0 for headed debug."
-)
-while True:
-    if os.environ.get("AURA_TEXT_MODE", "0") == "1":
-        try:
-            speech = input("\nYOU (type 'aura hello'): ").strip() or "aura hello"
-        except (EOFError, KeyboardInterrupt):
-            break
-    else:
-        try:
-            speech = listener.listen()
-        except Exception as e:
-            print(
-                f"\nSTT failed ({e}). Tip: set AURA_TEXT_MODE=1 to type instead, or AURA_BROWSER=chrome"
-            )
-            print("Falling back to keyboard for this turn.")
-            try:
-                speech = input("\nYOU (type 'aura hello'): ").strip() or "aura hello"
-            except (EOFError, KeyboardInterrupt):
-                break
+# Opencode-style terminal UI (rich) + hybrid voice+type
+try:
+    from rich.console import Console as _Console
+    from rich.panel import Panel as _Panel
+    from rich.markdown import Markdown as _Markdown
+    from rich.prompt import Prompt as _Prompt
+    _console = _Console()
+    _USE_RICH = True
+except ImportError:
+    _console = None
+    _USE_RICH = False
 
-    low = speech.lower()
+def _ui_print_ai(text: str):
+    if _USE_RICH and _console:
+        try:
+            _console.print(_Panel(_Markdown(text), title="AURA", border_style="cyan", expand=False))
+            return
+        except Exception:
+            pass
+    print(f"\n\033[92mAURA >> {text}\033[0m\n")
+
+def _ui_print_sys(text: str):
+    if _USE_RICH and _console:
+        try:
+            _console.print(f"[dim]{text}[/dim]")
+            return
+        except Exception:
+            pass
+    print(text)
+
+def _get_input_hybrid() -> str | None:
+    """Each turn: type directly, or press Enter empty / type '/voice' for mic. Voice timeout falls back to typing."""
+    _mode = os.environ.get("AURA_TEXT_MODE", "0")
+    _prompt = "YOU (type, Enter=voice, /voice=mic, /quit=exit)"
+    if _mode == "1":
+        try:
+            if _USE_RICH and _console:
+                return _Prompt.ask(f"\n[bold green]{_prompt}[/bold green]").strip() or "aura hello"
+            return input(f"\n{_prompt}: ").strip() or "aura hello"
+        except (EOFError, KeyboardInterrupt):
+            return None
+    # hybrid: typed line wins; empty or /voice -> mic with timeout
+    try:
+        if _USE_RICH and _console:
+            typed = _Prompt.ask(f"\n[bold green]{_prompt}[/bold green]", default="").strip()
+        else:
+            typed = input(f"\n{_prompt} [Enter=voice]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if typed.lower() in ("/quit", "/exit", "quit()", "exit()"):
+        return None
+    if typed and typed != "/voice":
+        return typed
+    # voice path
+    try:
+        _ui_print_sys("🎤 Listening... (speak now, 45s max, Ctrl+C for typing)")
+        speech = listener.listen(timeout_s=45)
+        if speech and speech.strip():
+            _ui_print_sys(f"YOU SAID: {speech.strip()}")
+            return speech.strip()
+        _ui_print_sys("No speech heard — type instead.")
+    except KeyboardInterrupt:
+        _ui_print_sys("Mic cancelled — type instead.")
+    except Exception as e:
+        _ui_print_sys(f"STT failed ({type(e).__name__}: {str(e)[:200]}). Type instead.")
+    try:
+        if _USE_RICH and _console:
+            return _Prompt.ask("[bold green]YOU (type)[/bold green]").strip() or "aura hello"
+        return input("YOU (type 'aura hello'): ").strip() or "aura hello"
+    except (EOFError, KeyboardInterrupt):
+        return None
+
+if _USE_RICH and _console:
+    _console.print(_Panel.fit("AURA-AGI — voice + text. Type, or Enter for mic. `stop` halts speech.", title="AURA ready", border_style="green"))
+else:
+    print("AURA ready. Type, or Enter for mic. AURA_BROWSER=brave|chrome, AURA_HEADLESS=0 headed, AURA_TEXT_MODE=1 keyboard-only.")
+while True:
+    speech = _get_input_hybrid()
+    if speech is None:
+        _ui_print_sys("Bye!")
+        break
+
+    low = speech.lower().strip()
+    # STOP: interrupt immediately, no LLM call — works with/without wakeword
+    if low in _STOP_WORDS or low.startswith("stop ") or low.endswith(" stop") or low == "aura stop":
+        _stop_speaking()
+        print("Stopped.")
+        continue
     is_wake = low.startswith("aura") or low.endswith("aura")
     if is_wake:
         if low.startswith("aura"):
@@ -188,6 +281,11 @@ while True:
         elif low.endswith("aura"):
             speech = speech[: -len("aura")].strip()
         print("Updated Speech:", speech)
+        # stop after wake strip too: "aura stop speaking"
+        if speech.lower().strip() in _STOP_WORDS:
+            _stop_speaking()
+            print("Stopped.")
+            continue
         # --- Optimized fast local intents (zero LLM cost, <10ms) ---
         low2 = speech.lower()
         # cache lower check once
@@ -408,7 +506,7 @@ while True:
         _low_stripped = speech.lower().strip(" .!?")
         if _AURA_FAST and _low_stripped in _FAST_REPLIES:
             chat_response = _FAST_REPLIES[_low_stripped]
-            print(f"\n\033[92mAURA (instant) >> {chat_response}\033[0m\n")
+            _ui_print_ai(chat_response)
             _speak_fast(chat_response)
             history_manager.update_file(speech, chat_response)
             continue
@@ -459,7 +557,7 @@ while True:
                 _timed_out = (_time.time() - _last_flush) > 0.8 and _words >= 5
                 if ((_hit_punct and len(buffer.strip()) > 12) or _words >= 10 or _timed_out) and len(buffer.strip()) > 3:
                     if first:
-                        print(f"\n\033[92mAURA (stream) >> {buffer.strip()}\033[0m")
+                        _ui_print_sys(f"AURA (stream) >> {buffer.strip()}")
                         first = False
                     try:
                         _speak_fast(buffer.strip())
@@ -488,12 +586,10 @@ while True:
                     chat_response = "Sorry, my brain is offline. Check GROQ_AI key."
         if not chat_response or not chat_response.strip():
             chat_response = "Sorry, I didn't catch that. Could you say again?"
-        # if we streamed, sentences already spoken via threads, just print; else speak once
+        # if we streamed, sentences already spoken via queue, just render panel; else speak once
         streamed = "first" in locals() and not first  # first False means we streamed
-        if streamed:
-            print(f"\n\033[92mAURA >> {chat_response}\033[0m\n")
-        else:
-            print(f"\n\033[92mAURA >> {chat_response}\033[0m\n")
+        _ui_print_ai(chat_response)
+        if not streamed:
             try:
                 if os.environ.get("ELEVENLABS_API_KEY"):
                     try:
@@ -501,9 +597,9 @@ while True:
 
                         clone_speak(chat_response)
                     except Exception:
-                        speak(chat_response)
+                        _speak_fast(chat_response)
                 else:
-                    speak(chat_response)
+                    _speak_fast(chat_response)
             except Exception as _tts_e:
                 print(f"TTS failed: {_tts_e}, continuing...")
         history_manager.update_file(speech, chat_response)

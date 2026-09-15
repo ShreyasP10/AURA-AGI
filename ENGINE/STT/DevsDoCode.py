@@ -20,21 +20,30 @@ class SpeechToTextListener:
         self,
         website_path: str = None,  # auto-detect local file with 2s silence fix
         language: str = "hi-IN",
-        wait_time: int = 10,
-        silence_timeout: int = 2000,  # ms, for continuous listening
-        browser: str = None,  # "chrome" or "brave" (default from AURA_BROWSER env or chrome)
+        wait_time: int = 30,  # longer for slow mic start (was 10, cut long speech)
+        silence_timeout: int = None,  # ms, from AURA_SILENCE_MS or 3000
+        browser: str = None,  # "brave" or "chrome" (default from AURA_BROWSER env or brave)
         brave_path: str = None,
     ):  # explicit brave.exe path
         import os
 
+        if silence_timeout is None:
+            try:
+                silence_timeout = int(os.environ.get("AURA_SILENCE_MS", "3000"))
+            except Exception:
+                silence_timeout = 3000
+        silence_timeout = max(800, min(8000, silence_timeout))
+        self.silence_timeout = silence_timeout
         if website_path is None:
-            # use local src/index.html with 2s silence fix (continuous=true)
+            # use local src/index.html with silence via ?silence= (continuous=true)
             local_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), "src", "index.html"
             )
-            website_path = "file:///" + local_path.replace("\\", "/")
+            website_path = "file:///" + local_path.replace("\\", "/") + f"?silence={silence_timeout}"
+        elif "?silence=" not in website_path and "index.html" in website_path:
+            website_path = website_path + f"?silence={silence_timeout}"
         if browser is None:
-            browser = os.environ.get("AURA_BROWSER", "chrome").lower()
+            browser = os.environ.get("AURA_BROWSER", "brave").lower()
 
         """Initializes the STT class with the given website path and language."""
         self.website_path = website_path
@@ -65,6 +74,10 @@ class SpeechToTextListener:
         self.chrome_options.add_argument(f"--user-data-dir={_profile}")
         self.chrome_options.add_argument("--no-default-browser-check")
         self.chrome_options.add_argument("--no-first-run")
+        # Stability flags: fix SessionNotCreated (version/origin) + headless crashes
+        self.chrome_options.add_argument("--no-sandbox")
+        self.chrome_options.add_argument("--disable-dev-shm-usage")
+        self.chrome_options.add_argument("--remote-allow-origins=*")
         self.chrome_options.add_experimental_option(
             "excludeSwitches", ["enable-automation"]
         )
@@ -91,7 +104,38 @@ class SpeechToTextListener:
                 )
             self.chrome_options.binary_location = found
             print(f"Using Brave: {found}")
-        self.driver = webdriver.Chrome(options=self.chrome_options)
+        try:
+            self.driver = webdriver.Chrome(options=self.chrome_options)
+        except Exception as e:
+            # Surface full cause: version mismatch is the usual suspect
+            print(f"\nSTT browser failed to start ({type(e).__name__}): {str(e)[:500]}")
+            if browser == "brave":
+                # Auto-fallback: Brave driver mismatch -> try Chrome same profile flags
+                print("Trying Chrome fallback...")
+                try:
+                    from selenium.webdriver.chrome.options import Options as _Opts
+                    _co = _Opts()
+                    _co.add_argument("--use-fake-ui-for-media-stream")
+                    _co.add_argument("--allow-file-access-from-files")
+                    _co.add_argument("--no-sandbox")
+                    _co.add_argument("--disable-dev-shm-usage")
+                    _co.add_argument("--remote-allow-origins=*")
+                    _co.add_argument(f"--user-data-dir={_profile}-chrome")
+                    _co.add_argument("--no-default-browser-check")
+                    _co.add_argument("--no-first-run")
+                    if os.environ.get("AURA_HEADLESS", "1") != "0":
+                        _co.add_argument("--headless=new")
+                    self.chrome_options = _co
+                    self.browser = "chrome"
+                    self.driver = webdriver.Chrome(options=self.chrome_options)
+                    print("Chrome fallback started.")
+                except Exception as e2:
+                    print(f"Chrome fallback also failed ({type(e2).__name__}): {str(e2)[:300]}")
+                    print("Fix: update browser + `pip install -U selenium`, or use AURA_TEXT_MODE=1.")
+                    raise
+            else:
+                print("Fix: update browser + `pip install -U selenium`, or use AURA_TEXT_MODE=1.")
+                raise
         self.wait = WebDriverWait(self.driver, wait_time)
         try:
             print("Made By \u2764\ufe0f @AURA-Team")
@@ -125,51 +169,121 @@ class SpeechToTextListener:
         ).get_attribute("value")
         return selected_language == self.language
 
-    def main(self) -> Optional[str]:
+    def main(self, timeout_s: int = 45) -> Optional[str]:
         """Performs speech-to-text conversion and returns the transcribed text."""
-        self.driver.get(self.website_path)
+        import time as _t
+        try:
+            self.driver.get(self.website_path)
+        except Exception as e:
+            # driver died (Brave crash / ConnectionReset) -> recreate once
+            print(f"\nSTT driver error ({e}), restarting browser...")
+            try:
+                self.restart()
+            except Exception as e2:
+                print(f"STT restart failed: {e2}")
+                return None
+            try:
+                self.driver.get(self.website_path)
+            except Exception as e3:
+                print(f"STT still failing: {e3}")
+                return None
 
         # Ensure the dropdown options are fully loaded before selecting
-        self.wait.until(EC.presence_of_element_located((By.ID, "language_select")))
-
+        try:
+            self.wait.until(EC.presence_of_element_located((By.ID, "language_select")))
+        except Exception as e:
+            print(f"\nSTT page load timeout: {e}")
+            return None
+        
         # Select the language using JavaScript
-        self.select_language()
+        try:
+            self.select_language()
+        except Exception:
+            pass
 
-        # Verify the language selection
-        if not self.verify_language_selection():
-            print(
-                f"Error: Failed to select the correct language. Selected: {self.verify_language_selection():}, Expected: {self.language}"
-            )
+        # Verify the language selection (non-fatal)
+        try:
+            if not self.verify_language_selection():
+                print(f"\nSTT warn: language select failed, continuing anyway")
+        except Exception:
+            pass
+
+        try:
+            self.driver.find_element(By.ID, "click_to_record").click()
+        except Exception as e:
+            print(f"\nSTT record click failed: {e}")
             return None
 
-        self.driver.find_element(By.ID, "click_to_record").click()
+        try:
+            is_recording = self.wait.until(
+                EC.presence_of_element_located((By.ID, "is_recording"))
+            )
+        except Exception as e:
+            print(f"\nSTT recording flag timeout: {e}")
+            return None
 
-        is_recording = self.wait.until(
-            EC.presence_of_element_located((By.ID, "is_recording"))
-        )
-
-        print("\033[94m\rListening...", end="", flush=True)
-        while is_recording.text.startswith("Recording: True"):
-            text = self.get_text()
-            if text:
+        print("\033[94m\rListening... (speak now, or Ctrl+C for typing)\033[0m", end="", flush=True)
+        start = _t.time()
+        last_text = ""
+        while True:
+            _t.sleep(0.25)  # was tight loop hammering chromedriver -> ConnectionReset
+            if _t.time() - start > timeout_s:
+                print(f"\nSTT timeout after {timeout_s}s, use typing.")
+                try:
+                    return self.get_text() or None
+                except Exception:
+                    return None
+            try:
+                is_recording = self.driver.find_element(By.ID, "is_recording")
+            except Exception as e:
+                print(f"\nSTT browser closed ({type(e).__name__}), use typing.")
+                return None
+            if not is_recording.text.startswith("Recording: True"):
+                break
+            try:
+                text = self.get_text()
+            except Exception:
+                break
+            if text and text != last_text:
                 self.stream(text)
-            is_recording = self.driver.find_element(By.ID, "is_recording")
+                last_text = text
 
-        return self.get_text()
+        try:
+            return self.get_text()
+        except Exception:
+            return last_text or None
 
-    def listen(self, prints: bool = False) -> Optional[str]:
+    def restart(self):
+        """Quit and recreate the webdriver (Brave crash recovery)."""
+        try:
+            self.driver.quit()
+        except Exception:
+            pass
+        import time as _t
+        _t.sleep(1.0)
+        from selenium import webdriver as _wd
+        self.driver = _wd.Chrome(options=self.chrome_options)
+        from selenium.webdriver.support.ui import WebDriverWait as _W
+        self.wait = _W(self.driver, 30)
+
+    def listen(self, prints: bool = False, timeout_s: int = 45) -> Optional[str]:
         """Starts the listening process by navigating to the website, selecting the desired language, and
         initiating speech-to-text conversion. The function returns the transcribed text if the
         listening process completes successfully.
         """
+        import time as _t
+        deadline = _t.time() + timeout_s + 15
         while True:
-            result = self.main()
-            if result and len(result) != 0:
+            if _t.time() > deadline:
+                return None
+            result = self.main(timeout_s=timeout_s)
+            if result and len(result.strip()) != 0:
                 print("\r" + " " * (len(result) + 16) + "\r", end="", flush=True)
                 if prints:
                     print("\033[92m\rYOU SAID: " + f"{result}\033[0m\n")
-                break
-        return result
+                return result
+            # None/empty = timeout or fail -> return None so caller falls back to typing
+            return result
 
 
 if __name__ == "__main__":

@@ -46,27 +46,8 @@ def generate(
     Returns:
         Union[str, None]: The LLM's response if successful, otherwise None.
     """
-    API_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
-
-    headers = {
-        "Accept": "text/event-stream",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
-        "Connection": "keep-alive",
-        "Content-Type": "application/json",
-        "Dnt": "1",
-        "Host": "api.deepinfra.com",
-        "Origin": "https://deepinfra.com",
-        "Referer": "https://deepinfra.com/",
-        "Sec-Ch-Ua": '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "X-Deepinfra-Source": "web-page",
-    }
+    import os
+    from groq import Groq
 
     if isinstance(conversation, str):
         conversation = [{"role": "user", "content": conversation}]
@@ -77,44 +58,30 @@ def generate(
 
     conversation.insert(0, {"role": "system", "content": system_prompt})
 
-    payload = {
-        "model": model,
-        "messages": conversation,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-        "stop": [],
-        "stream": True,
-    }
-
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, stream=True)
-        response.raise_for_status()
-
+        # Fallback to a fast Groq model since DeepInfra web endpoint is blocked
+        client = Groq(api_key=os.environ.get("GROQ_AI"))
+        chat_completion = client.chat.completions.create(
+            messages=conversation,
+            model="llama-3.1-8b-instant",
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
+        )
+        
         full_response = ""
-        for line in response.iter_lines(decode_unicode=True, chunk_size=chunk_size):
-            if line.startswith("data:"):
-                try:
-                    content = json.loads(line[5:])
-                    if content != "[DONE]":
-                        delta_content = (
-                            content.get("choices", [{}])[0]
-                            .get("delta", {})
-                            .get("content")
-                        )
-                        if delta_content:
-                            if stream:
-                                print(delta_content, end="", flush=True)
-                            full_response += delta_content
-
-                except Exception:
-                    continue
+        if stream:
+            for chunk in chat_completion:
+                delta = chunk.choices[0].delta.content or ""
+                print(delta, end="", flush=True)
+                full_response += delta
+        else:
+            full_response = chat_completion.choices[0].message.content
 
         return full_response.strip()
 
-    except requests.RequestException as e:
-        print(f"Error occurred during API request: {e}")
-        if hasattr(e.response, "text"):
-            print(f"Response content: {e.response.text}")
+    except Exception as e:
+        print(f"Error occurred during Groq fallback API request: {e}")
         return None
 
 

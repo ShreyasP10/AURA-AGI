@@ -3,33 +3,23 @@ import os
 import shutil
 
 
-def get_latest_chrome_url() -> str:
-    """
-    Retrieves the URL of the most recent webpage visited in Google Chrome.
-
-    Returns:
-        str: The URL of the most recent webpage visited in Google Chrome.
-    """
-    chrome_history_path = (
-        os.path.expanduser("~")
-        + r"\AppData\Local\Google\Chrome\User Data\Default\History"
-    )
-    if not os.path.exists(chrome_history_path):
+def _read_latest_url(history_path: str, copy_name: str, label: str) -> str:
+    if not os.path.exists(history_path):
         raise FileNotFoundError(
-            f"Chrome History not found: {chrome_history_path} (Windows Chrome only, close Chrome first if locked)"
+            f"{label} History not found: {history_path} (Windows only, close browser first if locked)"
         )
 
     # Destination path for the copy of the history file
-    history_db_path = os.path.join(os.getcwd(), "ChromeHistoryCopy.txt")
+    history_db_path = os.path.join(os.getcwd(), copy_name)
 
-    # Copy the Chrome history database to a new location
+    # Copy the history database to a new location
     try:
-        shutil.copy2(chrome_history_path, history_db_path)
+        shutil.copy2(history_path, history_db_path)
     except Exception as e:
-        raise RuntimeError(f"Cannot copy locked Chrome History (close Chrome): {e}")
+        raise RuntimeError(f"Cannot copy locked {label} History (close browser): {e}")
 
     try:
-        # Connect to the Chrome history database
+        # Connect to the history database
         conn = sqlite3.connect(history_db_path)
         cursor = conn.cursor()
 
@@ -37,7 +27,7 @@ def get_latest_chrome_url() -> str:
         cursor.execute("SELECT url FROM urls ORDER BY last_visit_time DESC LIMIT 1")
         row = cursor.fetchone()
         if not row:
-            raise ValueError("No URLs in Chrome history")
+            raise ValueError(f"No URLs in {label} history")
 
         # Close the connection
         conn.close()
@@ -50,6 +40,34 @@ def get_latest_chrome_url() -> str:
                 os.remove(history_db_path)
         except Exception:
             pass
+
+
+def get_latest_brave_url() -> str:
+    """Latest URL from Brave (default)."""
+    brave_history_path = (
+        os.path.expanduser("~")
+        + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History"
+    )
+    return _read_latest_url(brave_history_path, "BraveHistoryCopy.txt", "Brave")
+
+
+def get_latest_chrome_url() -> str:
+    """Latest URL from Chrome, fallback to Brave if Chrome missing (Brave-first)."""
+    chrome_history_path = (
+        os.path.expanduser("~")
+        + r"\AppData\Local\Google\Chrome\User Data\Default\History"
+    )
+    if os.path.exists(chrome_history_path):
+        try:
+            return _read_latest_url(chrome_history_path, "ChromeHistoryCopy.txt", "Chrome")
+        except Exception as e:
+            print(f"Chrome history failed ({e}), trying Brave...")
+    return get_latest_brave_url()
+
+
+# Backwards-compat alias: default browser URL = Brave-first
+def get_latest_browser_url() -> str:
+    return get_latest_chrome_url()
 
 
 if __name__ == "__main__":

@@ -84,34 +84,68 @@ def speak(
     unique_id = uuid.uuid4().hex
     mp3_file = f"{voice}_{unique_id}.mp3"
     subtitle_file = f"Subtitles_File_{unique_id}.srt"
-    
-    # Serialize generation: concurrent edge-tts calls get throttled -> NoAudioReceived
+
+    def _synth_in_process() -> bool:
+        """In-process edge-tts (no CLI spawn ~1s overhead). Returns True on audio saved."""
+        import asyncio
+
+        async def _run():
+            import edge_tts as _et
+
+            comm = _et.Communicate(safe_text, voice)
+            subs: list[str] = []
+            async for chunk in comm.stream():
+                if chunk["type"] == "audio":
+                    with open(mp3_file, "ab") as f:
+                        f.write(chunk["data"])
+                elif chunk["type"] == "WordBoundary":
+                    subs.append(f"{chunk.get('start',0)} --> {chunk.get('end',0)}\n{chunk.get('text','')}\n\n")
+            if subs:
+                with open(subtitle_file, "w", encoding="utf-8") as f:
+                    f.writelines(f"{i}\n{s}" for i, s in enumerate(subs, 1))
+            return os.path.exists(mp3_file) and os.path.getsize(mp3_file) > 0
+
+        try:
+            if os.path.exists(mp3_file):
+                os.remove(mp3_file)
+        except Exception:
+            pass
+        try:
+            return asyncio.run(_run())
+        except Exception as e:
+            print(f"edge_tts in-process failed: {type(e).__name__}: {str(e)[:150]}")
+            return False
+
+    def _synth_cli() -> bool:
+        try:
+            proc = subprocess.run(
+                ["edge-tts", "--voice", voice, "--text", safe_text,
+                 "--write-media", mp3_file, "--write-subtitles", subtitle_file],
+                capture_output=True, text=True, timeout=60,
+            )
+            if proc.returncode == 0 and os.path.exists(mp3_file):
+                return True
+            err = (proc.stderr or "").strip().splitlines()
+            print(f"edge_tts CLI failed: {(err[-1] if err else 'unknown')[:200]}")
+            return False
+        except subprocess.TimeoutExpired:
+            print("edge_tts CLI timeout")
+            return False
+        except FileNotFoundError:
+            print("edge_tts CLI not found: pip install edge-tts")
+            return False
+
+    # Serialize generation: concurrent calls get throttled -> NoAudioReceived
+    ok = False
     with _tts_gen_lock:
-        ret = 1
         for attempt in range(2):
-            try:
-                proc = subprocess.run(
-                    ["edge-tts", "--voice", voice, "--text", safe_text,
-                     "--write-media", mp3_file, "--write-subtitles", subtitle_file],
-                    capture_output=True, text=True, timeout=60,
-                )
-                ret = proc.returncode
-                if ret == 0 and os.path.exists(mp3_file):
-                    break
-                # quiet the noisy edge-tts traceback, show one line
-                err = (proc.stderr or "").strip().splitlines()
-                err_tail = err[-1] if err else "unknown error"
-                print(f"edge_tts attempt {attempt+1} failed: {err_tail[:200]}")
-            except subprocess.TimeoutExpired:
-                print(f"edge_tts attempt {attempt+1} timeout")
-                ret = 1
-            except FileNotFoundError:
-                print("edge_tts CLI not found: pip install edge-tts")
-                return
+            ok = _synth_in_process() or _synth_cli()
+            if ok:
+                break
             import time as _t
             if attempt == 0:
                 _t.sleep(1.0)
-    if ret != 0 or not os.path.exists(mp3_file):
+    if not ok or not os.path.exists(mp3_file):
         print(f"edge_tts failed, file missing: {mp3_file}")
         if os.path.exists(subtitle_file):
             try:

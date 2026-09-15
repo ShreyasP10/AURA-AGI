@@ -301,7 +301,9 @@
             recognition.continuous = true; // keep listening for continuous speech
             recognition.lang = language_select.value; 
             let silenceTimer = null;
-            const SILENCE_TIMEOUT = 1200; // 1.2s silence before stop (was 2000, faster turn-taking)
+            // AURA_SILENCE_MS via ?silence= (default 3000ms for longer utterances)
+            const _qSilence = parseInt(new URLSearchParams(location.search).get('silence') || '3000', 10);
+            const SILENCE_TIMEOUT = (Number.isFinite(_qSilence) && _qSilence >= 800 && _qSilence <= 8000) ? _qSilence : 3000;
 
             recognition.addEventListener('start', () => {
                 is_recording.innerHTML = "Recording: True";

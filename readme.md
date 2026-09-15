@@ -43,25 +43,27 @@
 ## Features
 
 ### 🎙️ Wakeword & Speech
-Your voice is the command line. AURA listens continuously and respects `aura` as wakeword.
+Your voice is the command line. AURA listens continuously and respects `aura` as wakeword. Every turn also accepts typing — press Enter empty or `/voice` for mic, `/quit` to exit.
 
 | Feature | Description |
 |---------|-------------|
-| **`aura` wakeword** | Prefix or suffix: `aura what is capital` or `what is capital aura` → routed; otherwise continuous chat `main.py:50` |
-| **Selenium STT** | `ENGINE/STT/DevsDoCode.py` headless Chrome → `realtime-stt-devs-do-code.netlify.app` streaming, language `en-IN` |
-| **Offline STT** | Vosk `vosk_recog.py` + `NetHyTech` alternative (`IMPORTS.py:9`) — no internet needed |
+| **`aura` wakeword** | Prefix or suffix: `aura what is capital` or `what is capital aura` → routed; otherwise continuous chat |
+| **`stop` to interrupt** | Say/type `stop`, `stop speaking`, `quiet`, `enough`, `cancel` → clears TTS queue + halts playback instantly, no LLM call |
+| **Brave-first Selenium STT** | `ENGINE/STT/DevsDoCode.py` Brave (default, `AURA_BROWSER=brave`) with Chrome auto-fallback, isolated profile, `?silence=` (default 3000ms, `AURA_SILENCE_MS=800-8000`), 45s listen timeout + driver restart |
+| **Offline STT** | Vosk `vosk_recog.py` (no browser/mic-server needed) + `whisper_offline.py` (`faster-whisper`) fallback |
 | **Hotword Detection** | `TOOLS/AUDIO/Hotword_Detection.py` `pvporcupine` (jarvis model → mapped to AURA) with activation sound |
-| **Interruptible Playback** | `Interrupted_Playsound.py` `pygame.mixer` + `stop_event` threads — interrupt mid-sentence, it listens again |
+| **Interruptible Playback** | Ordered TTS queue + single playback worker + `pygame.mixer.stop()` on `stop` |
 
 ### 🧠 LLM Router — Your Intent, Best Brain
 One utterance → 3 parallel classifications → best provider.
 
 | Feature | Description |
 |---------|-------------|
-| **Parallel Classification** | 3x `deepInfra_TEXT.generate()` fan-out `main.py:54` with `BISECTORS.image_requests_v3` + `complex_task_classifier_v6` + `INSTRUCTIONS.human_response_v3_AVA` |
-| **Provider Zoo (16 adapters)** | `BRAIN/AI/TEXT/API/` — DeepInfra, OpenRouter, Groq (`llama3-70b-8192`), HuggingFace, Pi, Liaobots, Phind, etc. |
+| **Parallel Classification** | 3x LLM fan-out with `BISECTORS.image_requests_v3` + `complex_task_classifier_v6` (with `v5` fallback) + emotion-adapted `INSTRUCTIONS.human_response_v3_AVA` |
+| **Provider Zoo (16 adapters)** | `BRAIN/AI/TEXT/API/` — Groq, OpenRouter, DeepInfra, HuggingFace, Pi, Liaobots, Phind, etc. |
+| **Realtime chat** | Groq `openai/gpt-oss-20b` streaming with early flush (punctuation/10 words/0.8s), 150-token voice cap, instant replies for greetings, emotion skipped for short inputs (`AURA_FAST=1`) |
 | **Local LLM** | `BRAIN/AI/TEXT/LOCAL/llama_CPP.py` — fully offline via `llama.cpp` |
-| **Streaming** | `BRAIN/AI/TEXT/STREAM/` sentence-level TTS streaming |
+| **Streaming** | `BRAIN/AI/TEXT/STREAM/` sentence-level generators feeding the ordered TTS queue |
 
 ### 🖼️ Vision & Image — See & Create
 | Feature | Description |
@@ -72,7 +74,7 @@ One utterance → 3 parallel classifications → best provider.
 ### 🌐 Web & Automation — Act, Don’t Just Answer
 | Feature | Description |
 |---------|-------------|
-| **Website Assistant** | `PLAYGROUND/WEBSITE_ASSISTANT/jenna_reader.py` + `chrome_latest_url.py` → `openrouter` summarization |
+| **Website Assistant** | `PLAYGROUND/WEBSITE_ASSISTANT/jenna_reader.py` + Brave-first history (`chrome_latest_url.py` tries Chrome → Brave) → `openrouter` summarization |
 | **Web Search** | `TOOLS/Web_Results.py`, `BRAIN/TOOLS/groq_web_access.py` tool-call `get_web_info` |
 | **Code Execution** | `TOOLS/RawDog.py` `webscout.AIutel.RawDog` (opt-in, `confirm_script=False`) |
 | **System Control** | `TOOLS/SYSTEM_SETTINGS/system_theme.py` + `taskbar.py` — dark/light, taskbar align/temperature via registry |
@@ -82,14 +84,16 @@ Drawing toolbar equivalent for voice: pick your voice, color your reply.
 
 | Feature | Description |
 |---------|-------------|
-| **Voices** | Speechify default `ENGINE/TTS/speechify.py`, EdgeTTS, DeepGram, ElevenLabs, StreamElements, `STREAMING/DeepGram.py` |
+| **Voices** | `edge_tts` default (`en-US-JennyNeural`): markdown/art sanitizer, serialized in-process synthesis with CLI fallback, unique files per utterance; DeepGram, ElevenLabs, Speechify, StreamElements, `STREAMING/` queue variants available |
+| **Voice on/off** | `AURA_VOICE=1` speaks (default), `AURA_VOICE=0` text-only with zero TTS wait |
 | **Sticky Notes Analogy** | Persistent `conversation_history.json` = your sticky notes that never fall off |
 
 ### 💾 Memory & Playground
 | Feature | Description |
 |---------|-------------|
 | **Conversation Manager** | `TOOLS/Alpaca_DS_Converser.py` word-window `history_offset=700` → `ASSETS/conversation_history.json` |
-| **Playground** | ADB calls `PLAYGROUND/ADB_CALL/`, CLAP audio classifier `CLAP_NN/`, proxy `ProxyAPI.py` |
+| **Everyday tools** | App launcher (`aura open chrome`), file finder (`aura find resume`), task board (`aura add task ... !high #tag`), live OCR, screen-see, alarms/timers via NL time parser |
+| **Playground** | ADB calls `PLAYGROUND/ADB_CALL/`, CLAP audio classifier `CLAP_NN/`, gesture control, proxy `ProxyAPI.py` |
 
 ---
 
@@ -100,9 +104,11 @@ Drawing toolbar equivalent for voice: pick your voice, color your reply.
 | **Image** | `aura generate image of futuristic city` | `BISECTORS.image_requests_v3` → `decohere_ai` | `ASSETS/image.jpg` + `Sure Sir, Generating...` |
 | **System Control** | `aura set dark theme` / `move taskbar left` | `system control` → `system_theme`/`taskbar` | Registry flip + toast `TOOLS/SYSTEM_SETTINGS/Alarms.py` |
 | **Vision** | `aura what is in my hand` | `vision` → `camera_vision` + `deepInfra_VISION` | `You are holding a pen` |
-| **Website** | `aura summarize this website` | `website` → `jenna_reader` + `openrouter` | Short summary via `Salli` voice |
+| **Website** | `aura summarize this website` | `website` → `jenna_reader` + `openrouter` | Short spoken summary (Brave history first) |
 | **Call** | `aura call mum` | `call` → `PLAYGROUND/ADB_CALL/make_call.py` (stub) | `Sure Sir. Calling` |
-| **Chat** | `aura hello` / `hello` (no wakeword) | `default` `human_response_v3_AVA` / `Hugging_Face_TEXT` | AVA persona + history persist |
+| **Open / Find / Tasks** | `aura open vscode` / `aura find resume` / `aura list tasks` | fast local intents, zero LLM | Spoken result |
+| **Stop** | `stop` / `aura stop` | immediate, no LLM | Playback halted |
+| **Chat** | `aura hello` / `hello` (no wakeword) | `default` `human_response_v3_AVA` / Groq stream + `Hugging_Face_TEXT` fallback | AVA persona + history persist |
 
 ---
 
@@ -226,14 +232,14 @@ AURA-AGI/
 ## Getting Started
 
 ### Prerequisites
-- **Python 3.10+** + **Google Chrome** + **Microphone** + **Git**
+- **Python 3.10+** + **Brave** (default) or **Google Chrome** + **Microphone** + **Git**
 - Windows recommended (registry system control), macOS/Linux works for voice/vision
 
 ### Quick Start for Users (No Code)
 1. **Clone**: `git clone https://github.com/ShreyasP10/AURA-AGI.git && cd AURA-AGI`
-2. **Env**: `Copy-Item .env.example .env` → fill one key (see Configuration)
-3. **Run**: `$env:PYTHONIOENCODING="utf-8"; python main.py` → say `aura hello`
-4. **No install needed** for chat — just speak. Vision needs camera permission.
+2. **Env**: `Copy-Item .env.example .env` → fill three keys (see Configuration)
+3. **Run**: `$env:PYTHONIOENCODING="utf-8"; $env:AURA_BROWSER="brave"; python main.py`
+4. **Talk or type**: say `aura hello`, or press Enter empty for mic, or just type. `stop` halts speech. Vision needs camera permission.
 
 ### Setup for Developers (Full Build)
 ```bash
@@ -241,10 +247,9 @@ git clone https://github.com/ShreyasP10/AURA-AGI.git
 cd AURA-AGI
 Copy-Item .env.example .env   # fill GROQ_AI / OPENROUTER / HUGGING_FACE_READ
 
-# install (py313 needs binary pygame)
+# install (py313: pygame needs binary wheel, pins are relaxed in requirements.txt)
 pip install --upgrade pip
-pip install pygame --only-binary :all:
-pip install playsound==1.2.2 huggingface_hub python-dotenv requests edge-tts opencv-python pvporcupine vosk groq googlesearch-python webscout
+pip install -r requirements.txt --only-binary pygame
 
 # verify
 python -c "import sys; sys.stdout.reconfigure(encoding='utf-8'); import IMPORTS; print('OK')"
@@ -262,16 +267,16 @@ git push -u origin feature/amazing
 
 ## Configuration
 
-*Configure Keys* + Firebase setup — AURA’s `.env`:
+*Configure Keys* — AURA’s `.env` (must-have first):
 
 | Key | Provider | Where to get | Free tier | Required? |
 |-----|----------|--------------|-----------|-----------|
-| `GROQ_AI` | Groq `llama3-70b-8192` `BRAIN/TOOLS/groq_web_access.py:64` | `console.groq.com` → `gsk_...` | **Generous free** | Recommended |
-| `OPENROUTER` | OpenRouter `openrouter.py:69` | `openrouter.ai/keys` → `sk-or-v1-...` (`:free` models) | $5 credit | For website `main.py:101` |
-| `HUGGING_FACE_READ` | HF Inference `Hugging_Face_TEXT.py:46` | `huggingface.co/settings/tokens` → `hf_...` | Free | Fallback `main.py:118` |
-| `DEEPINFRA` | DeepInfra (scrapes without) | `deepinfra.com` | $5 | Optional |
+| `GROQ_AI` | Groq `openai/gpt-oss-20b` chat + emotion + file-finder | `console.groq.com` → `gsk_...` | **Generous free** | Recommended |
+| `OPENROUTER` | OpenRouter website summarizer | `openrouter.ai/keys` → `sk-or-v1-...` (`:free` models) | $5 credit | For website summary |
+| `HUGGING_FACE_READ` | HF Inference fallback chat | `huggingface.co/settings/tokens` → `hf_...` | Free | Fallback |
 | `DECOHERE_AI` | `turbo.decohere.ai` | `decohere.ai` | Paid | Image only |
 | `PICOVOICE_KEY` | Porcupine 4.x | `console.picovoice.ai` | Free | Or `pip install pvporcupine==1.9.5` |
+| `ELEVENLABS_API_KEY` | Voice clone | `elevenlabs.io` | Limited | Optional (else edge-tts) |
 
 **Minimal `.env`:**
 ```ini
@@ -280,16 +285,28 @@ OPENROUTER=sk-or-v1-...
 HUGGING_FACE_READ=hf_...
 ```
 
+**Runtime switches** (env vars, no code change):
+
+| Var | Default | Effect |
+|-----|---------|--------|
+| `AURA_BROWSER` | `brave` | STT + cookie browser (`brave` with Chrome auto-fallback) |
+| `AURA_HEADLESS` | `1` | `0` opens the browser window for mic debugging |
+| `AURA_TEXT_MODE` | `0` | `1` keyboard-only, no browser/mic at all |
+| `AURA_SILENCE_MS` | `3000` | Mic silence before turn ends (`800-8000`) |
+| `AURA_FAST` | `1` | Realtime chat (early flush, 150-token cap, instant greetings) |
+| `AURA_VOICE` | `1` | `0` text-only, zero TTS wait |
+| `BRAVE_PATH` | auto-detect | Explicit `brave.exe` path if not found |
+
 ---
 
 ## How It Works
 *How It Works* 5 steps:
 
-1. **Choose Intent** — say `aura` + your wish (`generate image`, `what is in my hand`, `set dark theme`).
-2. **Capture** — Selenium STT streams your voice, or Vosk offline; `listener.listen()` `main.py:48`.
-3. **Classify** — 3 parallel LLM checks decide *vision / image / system / website / chat*.
-4. **Act** — best provider runs: LLaVA sees, Decohere draws, registry flips, or HF chats.
-5. **Speak & Remember** — interruptible TTS answers, history saved to `conversation_history.json` for next turn.
+1. **Choose Intent** — type or say `aura` + your wish (`generate image`, `what is in my hand`, `set dark theme`). No `aura` = casual chat. `stop` halts speech instantly.
+2. **Capture** — Brave/Chrome Selenium STT (45s timeout, silence-based turn end), Vosk/whisper offline, or keyboard (`AURA_TEXT_MODE=1`).
+3. **Classify** — fast local intents first (open/find/tasks/OCR/screen, zero LLM), then 3 parallel LLM checks decide *vision / image / system / website / chat*.
+4. **Act** — best provider runs: LLaVA sees, Decohere draws, registry flips, or Groq chats with early sentence flush.
+5. **Speak & Remember** — ordered TTS queue answers (in-process edge-tts, skips code/art), history saved to `conversation_history.json` for next turn.
 
 ---
 
@@ -307,19 +324,32 @@ AURA is local-first:
 
 | You see | Why | Fix |
 |---------|-----|-----|
-| `UnicodeEncodeError charmap` @ `DevsDoCode.py:34` ❤️ | Windows cp1252 | `$env:PYTHONIOENCODING="utf-8"` |
-| `getaddrinfo failed` @ `Hugging_Face_TEXT.py:73` | offline/no token | check Wi-Fi + `HUGGING_FACE_READ` |
+| `UnicodeEncodeError charmap` @ `DevsDoCode.py` ❤️ | Windows cp1252 | `$env:PYTHONIOENCODING="utf-8"` |
+| `getaddrinfo failed` @ `Hugging_Face_TEXT.py` | offline/no token | check Wi-Fi + `HUGGING_FACE_READ` |
 | `pvporcupine missing access_key` | v4 breaking change | `pip install pvporcupine==1.9.5` or `PICOVOICE_KEY` |
-| `pygame` build fail py313 | `distutils` removed | `pip install pygame --only-binary :all:` |
-| Slow STT | netlify roundtrip | switch `IMPORTS.py:9` to `vosk_recog` |
+| `pygame` build fail py313 | `distutils` removed, pinned `==2.5.2` | `pip install -r requirements.txt --only-binary pygame` (pins now `>=`) |
+| `SessionNotCreatedException` / Brave window closes | Brave vs chromedriver mismatch or profile lock | `pip install -U selenium` + update Brave, or `AURA_BROWSER=chrome`, or `AURA_TEXT_MODE=1` |
+| `NoSuchWindow: target window already closed` | browser already running with locked profile | close all Brave/Chrome windows; AURA uses isolated `%TEMP%\aura-*-profile` |
+| `edge_tts NoAudioReceived` / missing mp3 | markdown/code spoken + concurrent throttle | auto-sanitized + serialized in-process synth; `AURA_VOICE=0` for text-only |
+| `Listening...` hangs forever | Brave Shields blocks Google Speech / no mic | headed debug `AURA_HEADLESS=0`, allow mic, or Vosk offline / `AURA_TEXT_MODE=1` |
+| Slow STT | browser roundtrip | switch `IMPORTS.py` to `vosk_recog`, or lower `AURA_SILENCE_MS` |
+
+---
+
+## What's New (v1.1)
+
+- **TTS Concurrency Engine:** Fixed overlapping and repeating audio bugs in `edge_tts`. Sentences are now correctly queued with unique file IDs and a global playback lock, ensuring smooth, uninterrupted streaming voice.
+- **Intent Classifier Overhaul:** Rewritten the core intent classifiers (`BISECTORS`) to use the lightning-fast Groq API (`llama-3.1-8b-instant`), bypassing DeepInfra's new web security locks. This fully restores **System Controls** (theme/taskbar) and **Image Generation**.
+- **AURA Persona Upgrade:** Replaced the amnesiac/confused persona with a highly intelligent, helpful AI assistant (`human_response_v3_AVA`). AURA will now properly explain complex topics like CNNs instead of refusing.
+- **Syntax & Stability:** Formatted the entire codebase using `ruff` and safely patched over 1,500 lines of bare `except:` blocks for flawless runtime stability.
 
 ---
 
 ## Roadmap — What’s Next (We’d love your ideas!)
 
-- [ ] **Your own wakeword** — train `aura` `.ppn` properly
-- [ ] **Whisper offline** — no internet, no problem
-- [ ] **Beautiful UI** — sidebar, dark/light `ThemeManager`
+- [x] **Your own wakeword** — `aura*.ppn` auto-detect + `custom_wakeword.md` guide (jarvis builtin fallback)
+- [x] **Whisper offline** — `whisper_offline.py` (`faster-whisper`) fallback path
+- [x] **Rich terminal UI** — opencode-style panels, hybrid voice+type, `/voice` + `/quit`
 - [ ] **One-click installer** — auto-updates
 
 > Got an idea? Open an issue — we build with the community, not just for it.
