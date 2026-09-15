@@ -301,7 +301,7 @@
             recognition.continuous = true; // keep listening for continuous speech
             recognition.lang = language_select.value; 
             let silenceTimer = null;
-            const SILENCE_TIMEOUT = 2000; // 2 seconds silence before stop
+            const SILENCE_TIMEOUT = 1200; // 1.2s silence before stop (was 2000, faster turn-taking)
 
             recognition.addEventListener('start', () => {
                 is_recording.innerHTML = "Recording: True";

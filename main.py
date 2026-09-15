@@ -63,6 +63,46 @@
 #  ----------------------------------------------------------------------------
 
 from IMPORTS import *
+import queue as _queue
+import threading as _threading
+import time as _time
+
+# Realtime TTS: ordered queue + single playback worker (no overlap garble, preserves order)
+_tts_queue: _queue.Queue = _queue.Queue()
+def _tts_worker():
+    while True:
+        try:
+            _txt = _tts_queue.get()
+            try:
+                speak(_txt)
+            except Exception as _e:
+                print(f"TTS worker fail: {_e}")
+            finally:
+                _tts_queue.task_done()
+        except Exception:
+            pass
+_threading.Thread(target=_tts_worker, daemon=True).start()
+
+def _speak_fast(text: str):
+    """Non-blocking ordered speak; drops unspeakable/code-only chunks instantly."""
+    if not text or not text.strip():
+        return
+    try:
+        _tts_queue.put_nowait(text.strip())
+    except Exception:
+        pass
+
+# Instant replies: skip Groq round-trip (~1s) for common greetings
+_FAST_REPLIES = {
+    "hello": "Hello! How can I help you today?",
+    "hi": "Hi there! How can I help?",
+    "hey": "Hey! What can I do for you?",
+    "how are you": "I'm doing great! How can I help you today?",
+    "thank you": "You're welcome!",
+    "thanks": "You're welcome!",
+    "bye": "Goodbye! Talk soon.",
+}
+_AURA_FAST = os.environ.get("AURA_FAST", "1") == "1"  # 1=realtime mode
 
 
 # --- 12 new features (1-12) imports (isolated so one broken file doesn't disable all) ---
@@ -364,12 +404,21 @@ while True:
 
         # chat_response = Pi_Ai.generate(speech, prints=False)
         # FIX: HF dead + 4 Emotion-aware + 2 Offline Whisper fallback + 3 Voice clone optional
-        # 4 Emotion: detect then adapt prompt
+        # REALTIME: instant cache + skip emotion for short inputs + short max_tokens + early flush
+        _low_stripped = speech.lower().strip(" .!?")
+        if _AURA_FAST and _low_stripped in _FAST_REPLIES:
+            chat_response = _FAST_REPLIES[_low_stripped]
+            print(f"\n\033[92mAURA (instant) >> {chat_response}\033[0m\n")
+            _speak_fast(chat_response)
+            history_manager.update_file(speech, chat_response)
+            continue
+        # 4 Emotion: detect then adapt prompt (skip Groq call for <15 chars to save ~0.5s)
         emo = "neutral"
-        try:
-            emo = detect_emotion(speech)
-        except Exception:
-            pass  # fixed bare except -> specific
+        if len(speech) >= 15:
+            try:
+                emo = detect_emotion(speech)
+            except Exception:
+                pass  # fixed bare except -> specific
         base_prompt = INSTRUCTIONS.human_response_v3_AVA
         try:
             base_prompt = adapt_prompt(base_prompt, emo)
@@ -378,23 +427,25 @@ while True:
         if emo != "neutral":
             print(f"Emotion: {emo} -> adapted prompt")
         # STREAMING: Groq stream -> speak sentence-wise (was 2.1s wait -> 0.4s first word)
+        # REALTIME: max_tokens 150 (voice, was 512) + voice-brevity prompt + flush on ,;: too + time flush
         chat_response = ""
         try:
             from groq import Groq
 
             _groq = Groq(api_key=os.environ.get("GROQ_AI"))
+            _voice_prompt = base_prompt + " Reply in 1-2 short sentences for voice. No markdown, no code, no emoji." if _AURA_FAST else base_prompt
             stream = _groq.chat.completions.create(
                 model="openai/gpt-oss-20b",
                 messages=[
-                    {"role": "system", "content": base_prompt},
+                    {"role": "system", "content": _voice_prompt},
                     {"role": "user", "content": speech},
                 ],
-                max_tokens=512,
+                max_tokens=150 if _AURA_FAST else 512,
                 stream=True,
             )
             buffer = ""
             first = True
-            import threading
+            _last_flush = _time.time()
 
             for chunk in stream:
                 delta = chunk.choices[0].delta.content or ""
@@ -403,22 +454,22 @@ while True:
                 delta = delta.replace("\u202f", " ").replace("\u00a0", " ")
                 chat_response += delta
                 buffer += delta
-                if any(p in buffer for p in [".", "!", "?", "\n"]) and len(buffer) > 24:
+                _words = len(buffer.split())
+                _hit_punct = any(p in buffer for p in [".", "!", "?", "\n", ",", ";", ":"])
+                _timed_out = (_time.time() - _last_flush) > 0.8 and _words >= 5
+                if ((_hit_punct and len(buffer.strip()) > 12) or _words >= 10 or _timed_out) and len(buffer.strip()) > 3:
                     if first:
                         print(f"\n\033[92mAURA (stream) >> {buffer.strip()}\033[0m")
                         first = False
                     try:
-                        threading.Thread(
-                            target=speak, args=(buffer.strip(),), daemon=True
-                        ).start()
+                        _speak_fast(buffer.strip())
                     except Exception:
                         pass  # fixed bare except -> specific
                     buffer = ""
+                    _last_flush = _time.time()
             if buffer.strip():
                 try:
-                    threading.Thread(
-                        target=speak, args=(buffer.strip(),), daemon=True
-                    ).start()
+                    _speak_fast(buffer.strip())
                 except Exception:
                     pass  # fixed bare except -> specific
             if not chat_response:
