@@ -38,8 +38,8 @@ def get_settings() -> Settings:
         print(f"\n[SECURITY] Generated missing API_SECRET. Use Bearer token: {_api_secret}\n")
     
     searxng_secret = os.getenv("SEARXNG_SECRET", "")
-    if "replace-with-a-random-secret" in searxng_secret.lower():
-        raise ValueError("SEARXNG_SECRET still has the placeholder value. Run: openssl rand -hex 32")
+    if not searxng_secret.strip() or "replace-with-a-random-secret" in searxng_secret.lower():
+        raise ValueError("SEARXNG_SECRET is missing or still has the placeholder value. Run: openssl rand -hex 32")
 
     return Settings(
         app_name=os.getenv("APP_NAME", "AURA Kiosk Agent"),

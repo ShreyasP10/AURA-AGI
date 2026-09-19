@@ -148,16 +148,22 @@ def speak(
             print("edge_tts CLI not found: pip install edge-tts")
             return False
 
-    # Serialize generation: concurrent calls get throttled -> NoAudioReceived
+    # Serialize generation: concurrent calls get throttled -> NoAudioReceived.
+    # AURA_TTS_RETRY (default 1): attempts per sentence. Fail fast so one bad
+    # sentence doesn't stall the whole reply; text is already on screen.
+    try:
+        _max_attempts = max(1, int(os.environ.get("AURA_TTS_RETRY", "1")))
+    except ValueError:
+        _max_attempts = 1
     ok = False
     with _tts_gen_lock:
-        for attempt in range(2):
+        for attempt in range(_max_attempts):
             ok = _synth_in_process() or _synth_cli()
             if ok:
                 break
             import time as _t
 
-            if attempt == 0:
+            if attempt < _max_attempts - 1:
                 _t.sleep(1.0)
     if not ok or not os.path.exists(mp3_file):
         print(f"edge_tts failed, file missing: {mp3_file}")

@@ -142,7 +142,13 @@ def _stop_speaking():
         while not _tts_queue.empty():
             try:
                 _tts_queue.get_nowait()
-                # Do NOT call task_done() here
+                # Balanced: each drained item had exactly one put(), and the
+                # worker's in-flight item gets its own task_done() in finally.
+                # Without this, unfinished_tasks inflates and any future join() hangs.
+                try:
+                    _tts_queue.task_done()
+                except ValueError:
+                    pass  # counter already balanced; never crash stop
             except Exception:
                 break
     except Exception:
@@ -261,7 +267,7 @@ def _ui_print_ai(text: str):
                 _Panel(_Markdown(text), title="AURA", border_style="cyan", expand=False)
             )
             return
-        except Exception:
+        except BaseException:
             pass
     print(f"\n\033[92mAURA >> {text}\033[0m\n")
 
@@ -271,7 +277,7 @@ def _ui_print_sys(text: str):
         try:
             _console.print(f"[dim]{text}[/dim]")
             return
-        except Exception:
+        except BaseException:
             pass
     print(text)
 

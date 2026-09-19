@@ -120,12 +120,16 @@ async def healthz(request: Request) -> dict:
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
-    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#07111f" stroke="#48c6ff" stroke-width="2"/><text x="16" y="22" text-anchor="middle" fill="#48c6ff" font-size="16" font-family="sans-serif">J</text></svg>'
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#07111f" stroke="#48c6ff" stroke-width="2"/><text x="16" y="22" text-anchor="middle" fill="#48c6ff" font-size="16" font-family="sans-serif">A</text></svg>'
     return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/client-token", include_in_schema=False)
 async def client_token(request: Request) -> dict:
+    # Peer check uses the actual TCP source (not spoofable); Host header is only defense-in-depth.
+    peer = request.client.host if request.client else ""
+    if peer not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=403)
     host = request.headers.get("host", "")
     if not host.startswith("127.") and not host.startswith("localhost"):
         raise HTTPException(status_code=403)

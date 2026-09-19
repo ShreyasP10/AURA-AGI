@@ -1,11 +1,22 @@
-from typing import Generator
+from typing import Dict, Generator
 import pyaudio
 from vosk import Model, KaldiRecognizer
 import ast
 
+# Model load takes seconds (all the LOG lines) — cache per path so turns start instantly.
+_model_cache: Dict[str, Model] = {}
+
+
+def get_cached_model(model_path: str) -> Model:
+    if model_path not in _model_cache:
+        _model_cache[model_path] = Model(model_path)
+    return _model_cache[model_path]
+
 
 def speech_to_text(
-    prints: bool = True, model_path: str = r"ASSETS\Vosk\vosk-model-small-en-us-0.15"
+    prints: bool = True,
+    model_path: str = r"ASSETS\Vosk\vosk-model-small-en-us-0.15",
+    device_index: int = -1,
 ) -> Generator[str, None, None]:
     """
     Asynchronously transcribes continuous speech into text using the Vosk library and PyAudio.
@@ -28,27 +39,32 @@ def speech_to_text(
         >>> for speech in speech_to_text():
         ...     print(speech)
     """
-    # Initialize Vosk model
-    model = Model(model_path)
+    # Initialize Vosk model (cached after first turn)
+    model = get_cached_model(model_path)
     recognizer = KaldiRecognizer(model, 16000)
     print("Model Initialized....")
 
-    # Initialize PyAudio
+    # Initialize PyAudio (explicit device_index wins, else AURA_MIC_INDEX env, else default)
     audio = pyaudio.PyAudio()
     import os
 
-    mic_index = os.environ.get("AURA_MIC_INDEX")
-    if mic_index is not None:
-        mic_index = int(mic_index)
+    mic_index = device_index
+    if mic_index is None or mic_index < 0:
+        try:
+            mic_index = int(os.environ.get("AURA_MIC_INDEX", "-1"))
+        except ValueError:
+            mic_index = -1
 
-    stream = audio.open(
+    _open_kwargs = dict(
         format=pyaudio.paInt16,
         channels=1,
         rate=16000,
         input=True,
-        input_device_index=mic_index,
         frames_per_buffer=8192,
     )
+    if mic_index is not None and mic_index >= 0:
+        _open_kwargs["input_device_index"] = mic_index
+    stream = audio.open(**_open_kwargs)
     stream.start_stream()
 
     try:
