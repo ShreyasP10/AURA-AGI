@@ -347,7 +347,7 @@ while True:
 
     low = speech.lower().strip()
     # STOP: interrupt immediately, no LLM call — works with/without wakeword
-    if low in _STOP_WORDS or low == "aura stop":
+    if low in _STOP_WORDS:
         _stop_speaking()
         print("Stopped.")
         continue
@@ -540,18 +540,18 @@ while True:
                 pass
             try:
                 image_path = camera_vision.realtime_vision()
-                response_vison = deepInfra_VISION.generate(
+                response_vision = deepInfra_VISION.generate(
                     speech,
                     system_prompt=INSTRUCTIONS.vison_realtime_v1,
                     image_path=image_path,
                 )
-                print("AI>>", response_vison)
+                print("AI>>", response_vision)
                 try:
                     if os.path.exists(image_path):
                         os.remove(image_path)
                 except Exception:
                     pass
-                speak(response_vison)
+                speak(response_vision)
             except Exception as e:
                 print(f"Vision fail {e}")
                 speak("Vision failed. Check camera.")

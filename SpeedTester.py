@@ -32,3 +32,4 @@ for i in range(5):
     print(
         f"\033[93mHearling Audio Generator response time: {time.time() - start:.2f} seconds\033[0m"
     )
+

@@ -50,10 +50,9 @@ function setBusy(busy) {
   elements.send.textContent = busy ? "…" : "↑";
 }
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (apiToken) headers["Authorization"] = `Bearer ${apiToken}`;
+  const response = await fetch(path, { headers, ...options });
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
@@ -114,9 +113,11 @@ async function submitMessage(message = elements.input.value.trim()) {
   let sourceData = [];
   let fullAnswer = "";
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (apiToken) headers["Authorization"] = `Bearer ${apiToken}`;
     const response = await fetch("/api/chat/stream", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({
         profile_id: state.activeProfile,
         message,
@@ -572,7 +573,7 @@ function addActionControls(messageNode, proposal, note = "") {
     typedEntry.append(phraseInput, typedButton);
     controls.appendChild(typedEntry);
     addButton("Confirm by voice", () => captureActionConfirmation(proposal.action_id, refresh));
-  } else if (["confirmed", "authorized", "connector_unavailable", "execution_failed"].includes(proposal.status)) {
+  } else if (["confirmed", "authorized"].includes(proposal.status)) {
     addButton("Deliver to configured connector", async () => {
       try {
         const outcome = await api(`/api/actions/${encodeURIComponent(proposal.action_id)}/execute`, { method: "POST" });
@@ -666,6 +667,7 @@ async function initialize() {
   bindEvents();
   autosize();
   try {
+    apiToken = await fetch("/api/client-token").then(r => r.json()).then(d => d.token).catch(() => "");
     await Promise.all([loadProfiles(), loadSkills(), loadDriveFiles(), refreshHealth()]);
   } catch (error) {
     setStatus(`Startup issue: ${error.message}`);

@@ -204,7 +204,7 @@ class AgentService:
         if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
             return False
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             raw_addresses = await loop.run_in_executor(
                 None, socket.getaddrinfo, host, None, socket.IPPROTO_TCP
             )

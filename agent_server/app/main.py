@@ -124,6 +124,13 @@ def favicon() -> Response:
     return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
 
 
+@app.get("/api/client-token", include_in_schema=False)
+async def client_token(request: Request) -> dict:
+    host = request.headers.get("host", "")
+    if not host.startswith("127.") and not host.startswith("localhost"):
+        raise HTTPException(status_code=403)
+    return {"token": settings.api_secret}
+
 @app.get("/api/profiles", response_model=list[ProfileResponse], dependencies=[Depends(require_auth)])
 def list_profiles(request: Request) -> list[dict]:
     return database(request).list_profiles()
