@@ -36,6 +36,7 @@ def speech_to_text(
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
     import os
+
     mic_index = os.environ.get("AURA_MIC_INDEX")
     if mic_index is not None:
         mic_index = int(mic_index)

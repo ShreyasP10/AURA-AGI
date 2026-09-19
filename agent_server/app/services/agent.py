@@ -26,14 +26,23 @@ Keep the response concise enough for a tablet display, while still answering the
 
 
 class AgentService:
-    def __init__(self, settings: Settings, database: Database, ollama: OllamaClient, searxng: SearxngClient, memory: MemoryService) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        database: Database,
+        ollama: OllamaClient,
+        searxng: SearxngClient,
+        memory: MemoryService,
+    ) -> None:
         self.settings = settings
         self.database = database
         self.ollama = ollama
         self.searxng = searxng
         self.memory = memory
 
-    async def stream_chat(self, profile_id: str, user_message: str, include_web: bool) -> AsyncIterator[dict[str, Any]]:
+    async def stream_chat(
+        self, profile_id: str, user_message: str, include_web: bool
+    ) -> AsyncIterator[dict[str, Any]]:
         profile = self.database.get_profile(profile_id)
         if not profile:
             yield {"type": "error", "message": "The selected profile does not exist."}
@@ -47,9 +56,19 @@ class AgentService:
             try:
                 search_query = await self.rewrite_query(user_message)
                 sources = await self.retrieve(search_query)
-                yield {"type": "sources", "query": search_query, "sources": [self._public_source(source, index + 1) for index, source in enumerate(sources)]}
+                yield {
+                    "type": "sources",
+                    "query": search_query,
+                    "sources": [
+                        self._public_source(source, index + 1)
+                        for index, source in enumerate(sources)
+                    ],
+                }
             except Exception as error:
-                yield {"type": "status", "message": f"Search is unavailable; answering from local context. ({type(error).__name__})"}
+                yield {
+                    "type": "status",
+                    "message": f"Search is unavailable; answering from local context. ({type(error).__name__})",
+                }
         messages = self._messages(profile, user_message, turns, memories, sources)
         answer = ""
         try:
@@ -58,7 +77,10 @@ class AgentService:
                 answer += token
                 yield {"type": "token", "text": token}
         except Exception as error:
-            yield {"type": "error", "message": f"The local model could not complete this response: {error}"}
+            yield {
+                "type": "error",
+                "message": f"The local model could not complete this response: {error}",
+            }
             return
         finally:
             if answer.strip():
@@ -67,7 +89,10 @@ class AgentService:
 
     async def rewrite_query(self, question: str) -> str:
         prompt = [
-            {"role": "system", "content": "Rewrite the user's question as one concise web search query. Return only the query; do not add explanation, quotes, or commands."},
+            {
+                "role": "system",
+                "content": "Rewrite the user's question as one concise web search query. Return only the query; do not add explanation, quotes, or commands.",
+            },
             {"role": "user", "content": question},
         ]
         try:
@@ -79,7 +104,9 @@ class AgentService:
 
     async def retrieve(self, search_query: str) -> list[dict[str, str]]:
         results = await self.searxng.search(search_query)
-        enriched = await asyncio.gather(*(self._enrich_result(result) for result in results), return_exceptions=True)
+        enriched = await asyncio.gather(
+            *(self._enrich_result(result) for result in results), return_exceptions=True
+        )
         sources: list[dict[str, str]] = []
         for result, extra in zip(results, enriched, strict=True):
             source = dict(result)
@@ -90,20 +117,30 @@ class AgentService:
 
     async def _enrich_result(self, result: dict[str, str]) -> str:
         url = result.get("url", "")
-        if not self._is_public_http_url(url):
+        if not await self._is_public_http_url(url):
             return ""
         try:
             timeout = httpx.Timeout(10.0, connect=5.0)
             headers = {"User-Agent": "AuraKioskAgent/0.1 (+local retrieval)"}
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
+            async with httpx.AsyncClient(
+                timeout=timeout, follow_redirects=False, headers=headers
+            ) as client:
                 response = await client.get(url)
+                if response.status_code in {301, 302, 307, 308}:
+                    location = response.headers.get("location", "")
+                    if location and await self._is_public_http_url(location):
+                        response = await client.get(location)
+                    else:
+                        return ""
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "").lower()
                 if "text/html" not in content_type:
                     return ""
                 html = response.text[:500_000]
             soup = BeautifulSoup(html, "html.parser")
-            for node in soup(["script", "style", "noscript", "nav", "footer", "header", "aside"]):
+            for node in soup(
+                ["script", "style", "noscript", "nav", "footer", "header", "aside"]
+            ):
                 node.decompose()
             root = soup.find("article") or soup.find("main") or soup.body or soup
             text = " ".join(root.stripped_strings)
@@ -111,21 +148,55 @@ class AgentService:
         except (httpx.HTTPError, ValueError):
             return ""
 
-    def _messages(self, profile: dict[str, Any], question: str, turns: list[dict[str, str]], memories: list[dict[str, Any]], sources: list[dict[str, str]]) -> list[dict[str, str]]:
+    def _messages(
+        self,
+        profile: dict[str, Any],
+        question: str,
+        turns: list[dict[str, str]],
+        memories: list[dict[str, Any]],
+        sources: list[dict[str, str]],
+    ) -> list[dict[str, str]]:
         preference_note = ""
         if profile.get("preferences"):
             preference_note = f"\nProfile preferences: {profile['preferences']}"
-        memory_text = "\n".join(f"- ({memory['category']}, importance {memory['importance']}) {memory['content']}" for memory in memories) or "No relevant stored memories."
-        source_text = "\n\n".join("[{}] {}\nURL: {}\nSnippet: {}\nExtract: {}".format(index, source.get("title", "Untitled source"), source.get("url", ""), source.get("content", ""), source.get("extracted", "")) for index, source in enumerate(sources, start=1)) or "No web sources were retrieved."
+        memory_text = (
+            "\n".join(
+                f"- ({memory['category']}, importance {memory['importance']}) {memory['content']}"
+                for memory in memories
+            )
+            or "No relevant stored memories."
+        )
+        source_text = (
+            "\n\n".join(
+                "[{}] {}\nURL: {}\nSnippet: {}\nExtract: {}".format(
+                    index,
+                    source.get("title", "Untitled source"),
+                    source.get("url", ""),
+                    source.get("content", ""),
+                    source.get("extracted", ""),
+                )
+                for index, source in enumerate(sources, start=1)
+            )
+            or "No web sources were retrieved."
+        )
         context = f"Active profile: {profile['display_name']} ({profile['profile_id']}).{preference_note}\n\nRelevant long-term memory:\n{memory_text}\n\nRetrieved web evidence:\n{source_text}"
-        return [{"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context}, *turns, {"role": "user", "content": question}]
+        return [
+            {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context},
+            *turns,
+            {"role": "user", "content": question},
+        ]
 
     @staticmethod
     def _public_source(source: dict[str, str], number: int) -> dict[str, str | int]:
-        return {"number": number, "title": source.get("title", "Untitled source"), "url": source.get("url", ""), "snippet": source.get("content", "")}
+        return {
+            "number": number,
+            "title": source.get("title", "Untitled source"),
+            "url": source.get("url", ""),
+            "snippet": source.get("content", ""),
+        }
 
     @staticmethod
-    def _is_public_http_url(value: str) -> bool:
+    async def _is_public_http_url(value: str) -> bool:
         parsed = urlparse(value)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             return False
@@ -133,7 +204,13 @@ class AgentService:
         if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
             return False
         try:
-            addresses = {entry[4][0] for entry in socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)}
-            return bool(addresses) and all(ipaddress.ip_address(address).is_global for address in addresses)
+            loop = asyncio.get_event_loop()
+            raw_addresses = await loop.run_in_executor(
+                None, socket.getaddrinfo, host, None, socket.IPPROTO_TCP
+            )
+            addresses = {entry[4][0] for entry in raw_addresses}
+            return bool(addresses) and all(
+                ipaddress.ip_address(address).is_global for address in addresses
+            )
         except (OSError, ValueError):
             return False

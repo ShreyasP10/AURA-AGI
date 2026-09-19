@@ -26,7 +26,9 @@ class SearxngClient:
 
     async def search(self, query: str) -> list[dict[str, str]]:
         params = {"q": query, "format": "json", "language": "en", "safesearch": 1}
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout, follow_redirects=True
+        ) as client:
             response = await client.get(f"{self.base_url}/search", params=params)
             response.raise_for_status()
             payload = response.json()
@@ -39,7 +41,9 @@ class SearxngClient:
             if not url or url in seen_urls:
                 continue
             seen_urls.add(url)
-            results.append({"title": title[:300], "url": url[:2048], "content": content[:1500]})
+            results.append(
+                {"title": title[:300], "url": url[:2048], "content": content[:1500]}
+            )
             if len(results) >= self.limit:
                 break
         return results

@@ -92,7 +92,10 @@ def _stream_response(api_url, headers, payload, chunk_size):
             if modified_value and "[DONE]" not in modified_value:
                 json_modified_value = json.loads(modified_value)
                 try:
-                    if json_modified_value["choices"][0]["delta"]["content"] is not None:
+                    if (
+                        json_modified_value["choices"][0]["delta"]["content"]
+                        is not None
+                    ):
                         data_chunk = json_modified_value["choices"][0]["delta"][
                             "content"
                         ]

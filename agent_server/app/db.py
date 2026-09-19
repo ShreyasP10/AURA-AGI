@@ -112,23 +112,39 @@ class Database:
                 (owner_name, utc_now()),
             )
 
-    def create_profile(self, profile_id: str, display_name: str, consented: bool, preferences: dict[str, Any]) -> dict[str, Any]:
+    def create_profile(
+        self,
+        profile_id: str,
+        display_name: str,
+        consented: bool,
+        preferences: dict[str, Any],
+    ) -> dict[str, Any]:
         created_at = utc_now()
         with self.connect() as db:
             db.execute(
                 "INSERT INTO profiles(profile_id, display_name, consented, preferences_json, created_at) VALUES (?, ?, ?, ?, ?)",
-                (profile_id, display_name, int(consented), json.dumps(preferences), created_at),
+                (
+                    profile_id,
+                    display_name,
+                    int(consented),
+                    json.dumps(preferences),
+                    created_at,
+                ),
             )
         return self.get_profile(profile_id) or {}
 
     def get_profile(self, profile_id: str) -> dict[str, Any] | None:
         with self.connect() as db:
-            row = db.execute("SELECT * FROM profiles WHERE profile_id = ?", (profile_id,)).fetchone()
+            row = db.execute(
+                "SELECT * FROM profiles WHERE profile_id = ?", (profile_id,)
+            ).fetchone()
         return self._profile_dict(row) if row else None
 
     def list_profiles(self) -> list[dict[str, Any]]:
         with self.connect() as db:
-            rows = db.execute("SELECT * FROM profiles ORDER BY created_at ASC").fetchall()
+            rows = db.execute(
+                "SELECT * FROM profiles ORDER BY created_at ASC"
+            ).fetchall()
         return [self._profile_dict(row) for row in rows]
 
     def save_turn(self, profile_id: str, role: str, content: str) -> None:
@@ -146,7 +162,9 @@ class Database:
             ).fetchall()
         return [dict(row) for row in reversed(rows)]
 
-    def create_memory(self, profile_id: str, content: str, category: str, importance: int) -> dict[str, Any]:
+    def create_memory(
+        self, profile_id: str, content: str, category: str, importance: int
+    ) -> dict[str, Any]:
         memory_id = uuid.uuid4().hex
         now = utc_now()
         with self.connect() as db:
@@ -154,10 +172,21 @@ class Database:
                 "INSERT INTO memories(memory_id, profile_id, category, content, importance, created_at, last_accessed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (memory_id, profile_id, category, content, importance, now, now),
             )
-        return {"memory_id": memory_id, "profile_id": profile_id, "category": category, "content": content, "importance": importance, "created_at": now}
+        return {
+            "memory_id": memory_id,
+            "profile_id": profile_id,
+            "category": category,
+            "content": content,
+            "importance": importance,
+            "created_at": now,
+        }
 
-    def recall_memories(self, profile_id: str, query: str, limit: int = 6) -> list[dict[str, Any]]:
-        terms = [term.strip() for term in query.lower().split() if len(term.strip()) > 2][:8]
+    def recall_memories(
+        self, profile_id: str, query: str, limit: int = 6
+    ) -> list[dict[str, Any]]:
+        terms = [
+            term.strip() for term in query.lower().split() if len(term.strip()) > 2
+        ][:8]
         where = " OR ".join("lower(content) LIKE ?" for _ in terms)
         parameters: list[Any] = [profile_id]
         sql = "SELECT * FROM memories WHERE profile_id = ?"
@@ -176,20 +205,40 @@ class Database:
                 )
         return [dict(row) for row in rows]
 
-    def create_action_rule(self, rule_id: str, profile_id: str, action_type: str, display_name: str, allowed_targets: list[str], expires_at: str | None, enabled: bool) -> dict[str, Any]:
+    def create_action_rule(
+        self,
+        rule_id: str,
+        profile_id: str,
+        action_type: str,
+        display_name: str,
+        allowed_targets: list[str],
+        expires_at: str | None,
+        enabled: bool,
+    ) -> dict[str, Any]:
         created_at = utc_now()
         with self.connect() as db:
             db.execute(
                 """INSERT INTO action_rules(rule_id, profile_id, action_type, display_name, allowed_targets_json, expires_at, enabled, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(rule_id) DO UPDATE SET display_name = excluded.display_name, allowed_targets_json = excluded.allowed_targets_json, expires_at = excluded.expires_at, enabled = excluded.enabled""",
-                (rule_id, profile_id, action_type, display_name, json.dumps(allowed_targets), expires_at, int(enabled), created_at),
+                (
+                    rule_id,
+                    profile_id,
+                    action_type,
+                    display_name,
+                    json.dumps(allowed_targets),
+                    expires_at,
+                    int(enabled),
+                    created_at,
+                ),
             )
         return self.get_action_rule(rule_id) or {}
 
     def get_action_rule(self, rule_id: str) -> dict[str, Any] | None:
         with self.connect() as db:
-            row = db.execute("SELECT * FROM action_rules WHERE rule_id = ?", (rule_id,)).fetchone()
+            row = db.execute(
+                "SELECT * FROM action_rules WHERE rule_id = ?", (rule_id,)
+            ).fetchone()
         if not row:
             return None
         record = dict(row)
@@ -197,31 +246,66 @@ class Database:
         record["enabled"] = bool(record["enabled"])
         return record
 
-    def create_action(self, profile_id: str, action_type: str, summary: str, payload: dict[str, Any], status: str, requires_confirmation: bool, reason: str, rule_id: str | None = None, expires_at: str | None = None) -> dict[str, Any]:
+    def create_action(
+        self,
+        profile_id: str,
+        action_type: str,
+        summary: str,
+        payload: dict[str, Any],
+        status: str,
+        requires_confirmation: bool,
+        reason: str,
+        rule_id: str | None = None,
+        expires_at: str | None = None,
+    ) -> dict[str, Any]:
         action_id = uuid.uuid4().hex
         created_at = utc_now()
         with self.connect() as db:
             db.execute(
                 "INSERT INTO actions(action_id, profile_id, action_type, summary, payload_json, status, requires_confirmation, reason, rule_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (action_id, profile_id, action_type, summary, json.dumps(payload), status, int(requires_confirmation), reason, rule_id, created_at, expires_at),
+                (
+                    action_id,
+                    profile_id,
+                    action_type,
+                    summary,
+                    json.dumps(payload),
+                    status,
+                    int(requires_confirmation),
+                    reason,
+                    rule_id,
+                    created_at,
+                    expires_at,
+                ),
             )
         return self.get_action(action_id) or {}
 
     def get_action(self, action_id: str) -> dict[str, Any] | None:
         with self.connect() as db:
-            row = db.execute("SELECT * FROM actions WHERE action_id = ?", (action_id,)).fetchone()
+            row = db.execute(
+                "SELECT * FROM actions WHERE action_id = ?", (action_id,)
+            ).fetchone()
         return self._action_dict(row) if row else None
 
     def set_action_status(self, action_id: str, status: str) -> dict[str, Any] | None:
         with self.connect() as db:
-            db.execute("UPDATE actions SET status = ? WHERE action_id = ?", (status, action_id))
+            db.execute(
+                "UPDATE actions SET status = ? WHERE action_id = ?", (status, action_id)
+            )
         return self.get_action(action_id)
 
-    def audit(self, event_type: str, details: dict[str, Any], profile_id: str | None = None) -> None:
+    def audit(
+        self, event_type: str, details: dict[str, Any], profile_id: str | None = None
+    ) -> None:
         with self.connect() as db:
             db.execute(
                 "INSERT INTO audit_events(event_id, profile_id, event_type, details_json, created_at) VALUES (?, ?, ?, ?, ?)",
-                (uuid.uuid4().hex, profile_id, event_type, json.dumps(details), utc_now()),
+                (
+                    uuid.uuid4().hex,
+                    profile_id,
+                    event_type,
+                    json.dumps(details),
+                    utc_now(),
+                ),
             )
 
     def seed_skills(self, skills: list[dict[str, Any]]) -> None:
@@ -231,12 +315,24 @@ class Database:
                 """INSERT INTO skills(skill_id, display_name, description, category, enabled, requires_configuration, updated_at)
                 VALUES (:skill_id, :display_name, :description, :category, :enabled, :requires_configuration, :updated_at)
                 ON CONFLICT(skill_id) DO UPDATE SET display_name = excluded.display_name, description = excluded.description, category = excluded.category, requires_configuration = excluded.requires_configuration""",
-                [{**skill, "enabled": int(skill.get("enabled", False)), "requires_configuration": int(skill.get("requires_configuration", False)), "updated_at": now} for skill in skills],
+                [
+                    {
+                        **skill,
+                        "enabled": int(skill.get("enabled", False)),
+                        "requires_configuration": int(
+                            skill.get("requires_configuration", False)
+                        ),
+                        "updated_at": now,
+                    }
+                    for skill in skills
+                ],
             )
 
     def list_skills(self) -> list[dict[str, Any]]:
         with self.connect() as db:
-            rows = db.execute("SELECT * FROM skills ORDER BY category, display_name").fetchall()
+            rows = db.execute(
+                "SELECT * FROM skills ORDER BY category, display_name"
+            ).fetchall()
         records = [dict(row) for row in rows]
         for record in records:
             record["enabled"] = bool(record["enabled"])
@@ -245,8 +341,13 @@ class Database:
 
     def set_skill_enabled(self, skill_id: str, enabled: bool) -> dict[str, Any] | None:
         with self.connect() as db:
-            db.execute("UPDATE skills SET enabled = ?, updated_at = ? WHERE skill_id = ?", (int(enabled), utc_now(), skill_id))
-            row = db.execute("SELECT * FROM skills WHERE skill_id = ?", (skill_id,)).fetchone()
+            db.execute(
+                "UPDATE skills SET enabled = ?, updated_at = ? WHERE skill_id = ?",
+                (int(enabled), utc_now(), skill_id),
+            )
+            row = db.execute(
+                "SELECT * FROM skills WHERE skill_id = ?", (skill_id,)
+            ).fetchone()
         if not row:
             return None
         record = dict(row)

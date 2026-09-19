@@ -34,26 +34,63 @@ class AgentCoreTests(unittest.TestCase):
         self.assertEqual(len(recalled), 1)
 
     def test_message_needs_confirmation(self) -> None:
-        action = self.actions.propose("owner", "message", "Send a dinner message", {"target": "Ava"}, None)
+        action = self.actions.propose(
+            "owner", "message", "Send a dinner message", {"target": "Ava"}, None
+        )
         self.assertEqual(action["status"], "awaiting_confirmation")
         confirmed = self.actions.confirm(action["action_id"], "Yes, confirm")
         self.assertEqual(confirmed["status"], "confirmed")
 
     def test_unruled_device_action_is_blocked(self) -> None:
-        action = self.actions.propose("owner", "device_control", "Turn off lounge lamp", {"device": "Lounge lamp"}, None)
+        action = self.actions.propose(
+            "owner",
+            "device_control",
+            "Turn off lounge lamp",
+            {"device": "Lounge lamp"},
+            None,
+        )
         self.assertEqual(action["status"], "blocked")
 
     def test_allowlisted_device_action_is_authorized(self) -> None:
-        self.actions.create_rule("lounge-lamp", "owner", "device_control", "Lounge lamp controls", ["Lounge lamp"], datetime.now(UTC) + timedelta(hours=1), True)
-        action = self.actions.propose("owner", "device_control", "Turn off lounge lamp", {"device": "Lounge lamp"}, "lounge-lamp")
+        self.actions.create_rule(
+            "lounge-lamp",
+            "owner",
+            "device_control",
+            "Lounge lamp controls",
+            ["Lounge lamp"],
+            datetime.now(UTC) + timedelta(hours=1),
+            True,
+        )
+        action = self.actions.propose(
+            "owner",
+            "device_control",
+            "Turn off lounge lamp",
+            {"device": "Lounge lamp"},
+            "lounge-lamp",
+        )
         self.assertEqual(action["status"], "authorized")
-        other = self.actions.propose("owner", "device_control", "Turn off bedroom lamp", {"device": "Bedroom lamp"}, "lounge-lamp")
+        other = self.actions.propose(
+            "owner",
+            "device_control",
+            "Turn off bedroom lamp",
+            {"device": "Bedroom lamp"},
+            "lounge-lamp",
+        )
         self.assertEqual(other["status"], "blocked")
 
     def test_approved_action_is_not_sent_without_connector(self) -> None:
-        action = self.actions.propose("owner", "message", "Send a dinner message", {"target": "Ava"}, None)
+        action = self.actions.propose(
+            "owner", "message", "Send a dinner message", {"target": "Ava"}, None
+        )
         confirmed = self.actions.confirm(action["action_id"], "confirm")
-        executor = ActionExecutor(SimpleNamespace(action_webhook_url="", action_webhook_token="", request_timeout_seconds=5.0), self.database)
+        executor = ActionExecutor(
+            SimpleNamespace(
+                action_webhook_url="",
+                action_webhook_token="",
+                request_timeout_seconds=5.0,
+            ),
+            self.database,
+        )
         outcome = asyncio.run(executor.execute(confirmed["action_id"]))
         self.assertEqual(outcome["delivery"]["status"], "connector_unavailable")
 
@@ -66,9 +103,17 @@ class AgentCoreTests(unittest.TestCase):
 
     def test_vault_saves_to_the_active_profile_folder(self) -> None:
         self.database.create_profile("alex", "Alex", True, {})
-        vault = ProfileVault(SimpleNamespace(data_dir=Path(self.temp_dir.name) / "data"))
-        saved = vault.save_text("alex", "Dinner options", "Try the quiet Italian restaurant.", "plans")
-        self.assertTrue((Path(self.temp_dir.name) / "data" / "profiles" / saved["relative_path"]).exists())
+        vault = ProfileVault(
+            SimpleNamespace(data_dir=Path(self.temp_dir.name) / "data")
+        )
+        saved = vault.save_text(
+            "alex", "Dinner options", "Try the quiet Italian restaurant.", "plans"
+        )
+        self.assertTrue(
+            (
+                Path(self.temp_dir.name) / "data" / "profiles" / saved["relative_path"]
+            ).exists()
+        )
         self.assertEqual(vault.list_files("owner"), [])
         self.assertEqual(len(vault.list_files("alex")), 1)
 

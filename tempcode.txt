@@ -772,10 +772,20 @@ def _tts_worker():
         try:
             _txt = _tts_queue.get()
             try:
+                try:
+                    listener.stop_recording()
+                except Exception:
+                    pass
                 speak(_txt)
             except Exception as _e:
                 print(f"TTS worker fail: {_e}")
             finally:
+                try:
+                    # only restart mic if queue is empty, so we don't start/stop rapidly
+                    if _tts_queue.empty():
+                        listener.start_recording()
+                except Exception:
+                    pass
                 _tts_queue.task_done()
         except Exception:
             pass
@@ -820,7 +830,7 @@ def _stop_speaking():
     except Exception:
         pass
 
-_STOP_WORDS = ("stop", "stop speaking", "quiet", "enough", "cancel", "shut up")
+_STOP_WORDS = ("aura stop", "aura stop speaking", "aura quiet", "aura enough", "aura cancel", "aura shut up")
 
 # Instant replies: skip Groq round-trip (~1s) for common greetings
 _FAST_REPLIES = {
@@ -12021,6 +12031,20 @@ class SpeechToTextListener:
         try:
             self.driver.execute_script(
                 "try { window.aura_speech_flag = false; window.aura_recognition.stop(); document.getElementById('is_recording').innerHTML = 'Recording: False'; } catch(e){}"
+            )
+            import time as _t
+            _t.sleep(0.1)
+            el = self.driver.find_element(By.ID, "is_recording")
+            if el.text.startswith("Recording: True"):
+                print("\nSTT warning: stop_recording() called but mic remains active!")
+        except Exception:
+            pass
+
+    def start_recording(self):
+        """Forces the recording to start/resume via javascript."""
+        try:
+            self.driver.execute_script(
+                "try { window.aura_speech_flag = true; window.aura_recognition.start(); document.getElementById('is_recording').innerHTML = 'Recording: True'; } catch(e){}"
             )
         except Exception:
             pass

@@ -16,6 +16,7 @@ def generate_audio(message: str, voice: str = "Brian"):
         result (Union[str, None]): Temporary file path or None in failure
     """
     import urllib.parse
+
     encoded_message = urllib.parse.quote(message)
     # Base URL for provider API
     url: str = f"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={encoded_message}"

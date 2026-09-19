@@ -87,16 +87,21 @@ import time as _time
 
 # Realtime TTS: ordered queue + single playback worker (no overlap garble, preserves order)
 _tts_queue: _queue.Queue = _queue.Queue()
+_stop_tts = _threading.Event()
+
+
 def _tts_worker():
     while True:
         try:
             _txt = _tts_queue.get()
+            _stop_tts.clear()
             try:
-                try:
-                    listener.stop_recording()
-                except Exception:
-                    pass
-                speak(_txt)
+                if not _stop_tts.is_set():
+                    try:
+                        listener.stop_recording()
+                    except Exception:
+                        pass
+                    speak(_txt)
             except Exception as _e:
                 print(f"TTS worker fail: {_e}")
             finally:
@@ -109,7 +114,10 @@ def _tts_worker():
                 _tts_queue.task_done()
         except Exception:
             pass
+
+
 _threading.Thread(target=_tts_worker, daemon=True).start()
+
 
 def _speak_fast(text: str):
     """Non-blocking ordered speak; drops unspeakable/code-only chunks instantly."""
@@ -122,8 +130,10 @@ def _speak_fast(text: str):
     except Exception:
         pass
 
+
 def _stop_speaking():
     """Say 'stop' -> clear pending speech + halt current playback immediately."""
+    _stop_tts.set()
     try:
         listener.stop_recording()
     except Exception:
@@ -132,13 +142,14 @@ def _stop_speaking():
         while not _tts_queue.empty():
             try:
                 _tts_queue.get_nowait()
-                _tts_queue.task_done()
+                # Do NOT call task_done() here
             except Exception:
                 break
     except Exception:
         pass
     try:
         import pygame
+
         try:
             pygame.mixer.music.stop()
         except Exception:
@@ -150,7 +161,15 @@ def _stop_speaking():
     except Exception:
         pass
 
-_STOP_WORDS = ("aura stop", "aura stop speaking", "aura quiet", "aura enough", "aura cancel", "aura shut up")
+
+_STOP_WORDS = (
+    "aura stop",
+    "aura stop speaking",
+    "aura quiet",
+    "aura enough",
+    "aura cancel",
+    "aura shut up",
+)
 
 # Instant replies: skip Groq round-trip (~1s) for common greetings
 _FAST_REPLIES = {
@@ -175,7 +194,10 @@ def _optional_import(importer, fallback):
 
 
 def _fallback(*a, **k):
-    return "[feature not installed]"
+    print("Feature not available")
+    return ""
+
+
 open_app = _optional_import(
     lambda: __import__(
         "TOOLS.SYSTEM_SETTINGS.app_launcher", fromlist=["open_app"]
@@ -224,20 +246,25 @@ try:
     from rich.panel import Panel as _Panel
     from rich.markdown import Markdown as _Markdown
     from rich.prompt import Prompt as _Prompt
+
     _console = _Console()
     _USE_RICH = True
 except ImportError:
     _console = None
     _USE_RICH = False
 
+
 def _ui_print_ai(text: str):
     if _USE_RICH and _console:
         try:
-            _console.print(_Panel(_Markdown(text), title="AURA", border_style="cyan", expand=False))
+            _console.print(
+                _Panel(_Markdown(text), title="AURA", border_style="cyan", expand=False)
+            )
             return
         except Exception:
             pass
     print(f"\n\033[92mAURA >> {text}\033[0m\n")
+
 
 def _ui_print_sys(text: str):
     if _USE_RICH and _console:
@@ -248,6 +275,7 @@ def _ui_print_sys(text: str):
             pass
     print(text)
 
+
 def _get_input_hybrid() -> str | None:
     """Each turn: type directly, or press Enter empty / type '/voice' for mic. Voice timeout falls back to typing."""
     _mode = os.environ.get("AURA_TEXT_MODE", "0")
@@ -255,14 +283,19 @@ def _get_input_hybrid() -> str | None:
     if _mode == "1":
         try:
             if _USE_RICH and _console:
-                return _Prompt.ask(f"\n[bold green]{_prompt}[/bold green]").strip() or "aura hello"
+                return (
+                    _Prompt.ask(f"\n[bold green]{_prompt}[/bold green]").strip()
+                    or "aura hello"
+                )
             return input(f"\n{_prompt}: ").strip() or "aura hello"
         except (EOFError, KeyboardInterrupt):
             return None
     # hybrid: typed line wins; empty or /voice -> mic with timeout
     try:
         if _USE_RICH and _console:
-            typed = _Prompt.ask(f"\n[bold green]{_prompt}[/bold green]", default="").strip()
+            typed = _Prompt.ask(
+                f"\n[bold green]{_prompt}[/bold green]", default=""
+            ).strip()
         else:
             typed = input(f"\n{_prompt} [Enter=voice]: ").strip()
     except (EOFError, KeyboardInterrupt):
@@ -285,15 +318,27 @@ def _get_input_hybrid() -> str | None:
         _ui_print_sys(f"STT failed ({type(e).__name__}: {str(e)[:200]}). Type instead.")
     try:
         if _USE_RICH and _console:
-            return _Prompt.ask("[bold green]YOU (type)[/bold green]").strip() or "aura hello"
+            return (
+                _Prompt.ask("[bold green]YOU (type)[/bold green]").strip()
+                or "aura hello"
+            )
         return input("YOU (type 'aura hello'): ").strip() or "aura hello"
     except (EOFError, KeyboardInterrupt):
         return None
 
+
 if _USE_RICH and _console:
-    _console.print(_Panel.fit("AURA-AGI — voice + text. Type, or Enter for mic. `stop` halts speech.", title="AURA ready", border_style="green"))
+    _console.print(
+        _Panel.fit(
+            "AURA-AGI — voice + text. Type, or Enter for mic. `stop` halts speech.",
+            title="AURA ready",
+            border_style="green",
+        )
+    )
 else:
-    print("AURA ready. Type, or Enter for mic. AURA_BROWSER=brave|chrome, AURA_HEADLESS=0 headed, AURA_TEXT_MODE=1 keyboard-only.")
+    print(
+        "AURA ready. Type, or Enter for mic. AURA_BROWSER=brave|chrome, AURA_HEADLESS=0 headed, AURA_TEXT_MODE=1 keyboard-only."
+    )
 while True:
     speech = _get_input_hybrid()
     if speech is None:
@@ -320,6 +365,16 @@ while True:
             continue
         # --- Optimized fast local intents (zero LLM cost, <10ms) ---
         low2 = speech.lower()
+        if _AURA_FAST:
+            _fast = _FAST_REPLIES.get(low2.strip())
+            if _fast:
+                _ui_print_ai(_fast)
+                _speak_fast(_fast)
+                try:
+                    history_manager.update_history(speech, _fast)
+                except Exception:
+                    pass
+                continue
         # cache lower check once
         if low2.startswith("open ") or (
             "open " in low2
@@ -399,15 +454,16 @@ while True:
             "complex_task_classifier_v6",
             BISECTORS.complex_task_classifier_v5,
         )
+        _safe_speech = f"<<BEGIN_CLASSIFICATION_INPUT>>\n{speech[:500]}\n<<END_CLASSIFICATION_INPUT>>\nClassify ONLY the text between the tags above."
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
             response_img_or_text = ex.submit(
                 deepInfra_TEXT.generate,
-                [{"role": "user", "content": "Text to Classify -->" + speech}],
+                [{"role": "user", "content": _safe_speech}],
                 system_prompt=BISECTORS.image_requests_v3,
             )
             response_classifier = ex.submit(
                 deepInfra_TEXT.generate,
-                [{"role": "user", "content": "Text to Classify -->" + speech}],
+                [{"role": "user", "content": _safe_speech}],
                 system_prompt=_classifier_prompt,
                 stream=False,
             )
@@ -564,7 +620,12 @@ while True:
             from groq import Groq
 
             _groq = Groq(api_key=os.environ.get("GROQ_AI"))
-            _voice_prompt = base_prompt + " Reply in 1-2 short sentences for voice. No markdown, no code, no emoji." if _AURA_FAST else base_prompt
+            _voice_prompt = (
+                base_prompt
+                + " Reply in 1-2 short sentences for voice. No markdown, no code, no emoji."
+                if _AURA_FAST
+                else base_prompt
+            )
             stream = _groq.chat.completions.create(
                 model="openai/gpt-oss-20b",
                 messages=[
@@ -585,9 +646,15 @@ while True:
                 chat_response += delta
                 buffer += delta
                 _words = len(buffer.split())
-                _hit_punct = any(p in buffer for p in [".", "!", "?", "\n", ",", ";", ":"])
+                _hit_punct = any(
+                    p in buffer for p in [".", "!", "?", "\n", ",", ";", ":"]
+                )
                 _timed_out = (_time.time() - _last_flush) > 0.8 and _words >= 5
-                if ((_hit_punct and len(buffer.strip()) > 12) or _words >= 10 or _timed_out) and len(buffer.strip()) > 3:
+                if (
+                    (_hit_punct and len(buffer.strip()) > 12)
+                    or _words >= 10
+                    or _timed_out
+                ) and len(buffer.strip()) > 3:
                     if first:
                         _ui_print_sys(f"AURA (stream) >> {buffer.strip()}")
                         first = False
@@ -612,7 +679,6 @@ while True:
                     chat_response = Hugging_Face_TEXT.generate(speech)
             except Exception:
                 try:
-
                     chat_response = "[Groq+Hf failed, try offline whisper]"
                 except Exception:
                     chat_response = "Sorry, my brain is offline. Check GROQ_AI key."

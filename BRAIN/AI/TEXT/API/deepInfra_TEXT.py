@@ -66,7 +66,7 @@ def generate(
             max_tokens=max_tokens,
             stream=stream,
         )
-        
+
         full_response = ""
         if stream:
             for chunk in chat_completion:

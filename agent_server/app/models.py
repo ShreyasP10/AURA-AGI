@@ -30,7 +30,9 @@ class ProfileResponse(BaseModel):
 
 class ActionProposalRequest(BaseModel):
     profile_id: str = Field(default="owner", min_length=1, max_length=96)
-    action_type: Literal["message", "booking", "file_transfer", "location_share", "device_control"]
+    action_type: Literal[
+        "message", "booking", "file_transfer", "location_share", "device_control"
+    ]
     summary: str = Field(min_length=1, max_length=800)
     payload: dict[str, Any] = Field(default_factory=dict)
     rule_id: str | None = Field(default=None, max_length=96)
@@ -85,7 +87,9 @@ class VaultSaveRequest(BaseModel):
 class EnrollmentImageRequest(BaseModel):
     image_data_url: str = Field(min_length=32, max_length=2_800_000)
     consented: bool
-    label: str = Field(default="Galaxy Book explicit profile enrollment", max_length=160)
+    label: str = Field(
+        default="Galaxy Book explicit profile enrollment", max_length=160
+    )
 
 
 class MediaCaptureRequest(BaseModel):

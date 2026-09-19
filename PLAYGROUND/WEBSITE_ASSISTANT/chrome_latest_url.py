@@ -59,7 +59,9 @@ def get_latest_chrome_url() -> str:
     )
     if os.path.exists(chrome_history_path):
         try:
-            return _read_latest_url(chrome_history_path, "ChromeHistoryCopy.txt", "Chrome")
+            return _read_latest_url(
+                chrome_history_path, "ChromeHistoryCopy.txt", "Chrome"
+            )
         except Exception as e:
             print(f"Chrome history failed ({e}), trying Brave...")
     return get_latest_brave_url()

@@ -99,7 +99,9 @@ def speak(
                     with open(mp3_file, "ab") as f:
                         f.write(chunk["data"])
                 elif chunk["type"] == "WordBoundary":
-                    subs.append(f"{chunk.get('start',0)} --> {chunk.get('end',0)}\n{chunk.get('text','')}\n\n")
+                    subs.append(
+                        f"{chunk.get('start', 0)} --> {chunk.get('end', 0)}\n{chunk.get('text', '')}\n\n"
+                    )
             if subs:
                 with open(subtitle_file, "w", encoding="utf-8") as f:
                     f.writelines(f"{i}\n{s}" for i, s in enumerate(subs, 1))
@@ -119,9 +121,20 @@ def speak(
     def _synth_cli() -> bool:
         try:
             proc = subprocess.run(
-                ["edge-tts", "--voice", voice, "--text", safe_text,
-                 "--write-media", mp3_file, "--write-subtitles", subtitle_file],
-                capture_output=True, text=True, timeout=60,
+                [
+                    "edge-tts",
+                    "--voice",
+                    voice,
+                    "--text",
+                    safe_text,
+                    "--write-media",
+                    mp3_file,
+                    "--write-subtitles",
+                    subtitle_file,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             if proc.returncode == 0 and os.path.exists(mp3_file):
                 return True
@@ -143,6 +156,7 @@ def speak(
             if ok:
                 break
             import time as _t
+
             if attempt == 0:
                 _t.sleep(1.0)
     if not ok or not os.path.exists(mp3_file):
@@ -157,7 +171,7 @@ def speak(
     # Use a global lock so sentences don't talk over each other
     if not hasattr(speak, "playback_lock"):
         speak.playback_lock = threading.Lock()
-        
+
     with speak.playback_lock:
         try:
             playsound(mp3_file)
@@ -166,12 +180,12 @@ def speak(
             try:
                 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
                 import pygame
-    
+
                 pygame.mixer.init()
                 pygame.mixer.music.load(mp3_file)
                 pygame.mixer.music.play()
                 import time
-    
+
                 while pygame.mixer.music.get_busy():
                     time.sleep(0.1)
                 pygame.mixer.quit()

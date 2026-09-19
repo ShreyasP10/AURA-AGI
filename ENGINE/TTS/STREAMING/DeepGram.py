@@ -194,7 +194,9 @@ def speak(
                         print(f"No data received for chunk {part_number}. Retrying...")
             except requests.RequestException as e:
                 if verbose:
-                    print(f"Error for chunk {part_number} (attempt {attempt+1}/3): {e}")
+                    print(
+                        f"Error for chunk {part_number} (attempt {attempt + 1}/3): {e}"
+                    )
                 time.sleep(1)
         raise Exception(f"Failed to process chunk {part_number} after 3 attempts")
 
