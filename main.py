@@ -92,10 +92,20 @@ def _tts_worker():
         try:
             _txt = _tts_queue.get()
             try:
+                try:
+                    listener.stop_recording()
+                except Exception:
+                    pass
                 speak(_txt)
             except Exception as _e:
                 print(f"TTS worker fail: {_e}")
             finally:
+                try:
+                    # only restart mic if queue is empty, so we don't start/stop rapidly
+                    if _tts_queue.empty():
+                        listener.start_recording()
+                except Exception:
+                    pass
                 _tts_queue.task_done()
         except Exception:
             pass
@@ -140,7 +150,7 @@ def _stop_speaking():
     except Exception:
         pass
 
-_STOP_WORDS = ("stop", "stop speaking", "quiet", "enough", "cancel", "shut up")
+_STOP_WORDS = ("aura stop", "aura stop speaking", "aura quiet", "aura enough", "aura cancel", "aura shut up")
 
 # Instant replies: skip Groq round-trip (~1s) for common greetings
 _FAST_REPLIES = {

@@ -362,7 +362,7 @@ class _LazyListener:
     def __init__(self, *a, **k): self._a=a; self._k=k; self._inst=None
     def _get(self):
         if self._inst is None:
-            _browser = os.environ.get("AURA_BROWSER", "brave")
+            _browser = os.environ.get("AURA_BROWSER", "chrome")
             print(f"Lazy init STT {_browser}...")
             self._inst=SpeechToTextListener(*self._a, **self._k)
         return self._inst
@@ -795,6 +795,10 @@ def _speak_fast(text: str):
 def _stop_speaking():
     """Say 'stop' -> clear pending speech + halt current playback immediately."""
     try:
+        listener.stop_recording()
+    except Exception:
+        pass
+    try:
         while not _tts_queue.empty():
             try:
                 _tts_queue.get_nowait()
@@ -968,7 +972,7 @@ while True:
 
     low = speech.lower().strip()
     # STOP: interrupt immediately, no LLM call — works with/without wakeword
-    if low in _STOP_WORDS or low.startswith("stop ") or low.endswith(" stop") or low == "aura stop":
+    if low in _STOP_WORDS or low == "aura stop":
         _stop_speaking()
         print("Stopped.")
         continue
@@ -11909,7 +11913,7 @@ class SpeechToTextListener:
         elif "?silence=" not in website_path and "index.html" in website_path:
             website_path = website_path + f"?silence={silence_timeout}"
         if browser is None:
-            browser = os.environ.get("AURA_BROWSER", "brave").lower()
+            browser = os.environ.get("AURA_BROWSER", "chrome").lower()
 
         """Initializes the STT class with the given website path and language."""
         self.website_path = website_path
@@ -12011,6 +12015,15 @@ class SpeechToTextListener:
     def stream(self, content: str):
         """Prints the given content to the console with a yellow color, overwriting previous output, with "speaking..." added."""
         print("\033[96m\rUser Speaking: \033[93m" + f" {content}", end="", flush=True)
+
+    def stop_recording(self):
+        """Forces the active recording to stop via javascript."""
+        try:
+            self.driver.execute_script(
+                "try { window.aura_speech_flag = false; window.aura_recognition.stop(); document.getElementById('is_recording').innerHTML = 'Recording: False'; } catch(e){}"
+            )
+        except Exception:
+            pass
 
     def get_text(self) -> str:
         """Retrieves the transcribed text from the website."""
@@ -12737,10 +12750,11 @@ FILE: ENGINE/STT/src/index.html
         const language_select = document.getElementById('language_select');
 
         click_to_record.addEventListener('click',function(){
-            var speech = true;
+            window.aura_speech_flag = true;
             window.SpeechRecognition = window.webkitSpeechRecognition;
 
             const recognition = new SpeechRecognition();
+            window.aura_recognition = recognition;
             recognition.interimResults = true;
             recognition.continuous = true; // keep listening for continuous speech
             recognition.lang = language_select.value; 
@@ -12755,7 +12769,7 @@ FILE: ENGINE/STT/src/index.html
 
             recognition.addEventListener('end', () => {
                 // auto-restart if stopped due to browser's short pause and not due to silence timeout
-                if (is_recording.innerHTML === "Recording: True" && speech) {
+                if (is_recording.innerHTML === "Recording: True" && window.aura_speech_flag) {
                     try { recognition.start(); } catch(e) {}
                 } else {
                     is_recording.innerHTML = "Recording: False";
@@ -12781,7 +12795,7 @@ FILE: ENGINE/STT/src/index.html
                 // reset silence timer on every result (speech detected)
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
-                    speech = false;
+                    window.aura_speech_flag = false;
                     try { recognition.stop(); } catch(e) {}
                     is_recording.innerHTML = "Recording: False";
                 }, SILENCE_TIMEOUT);
@@ -12791,12 +12805,12 @@ FILE: ENGINE/STT/src/index.html
             recognition.addEventListener('speechend', () => {
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
-                    speech = false;
+                    window.aura_speech_flag = false;
                     try { recognition.stop(); } catch(e) {}
                 }, SILENCE_TIMEOUT);
             });
 
-            if (speech == true) {
+            if (window.aura_speech_flag == true) {
                 recognition.start();
             }
         })

@@ -152,6 +152,20 @@ class SpeechToTextListener:
             self.driver.execute_script(
                 "try { window.aura_speech_flag = false; window.aura_recognition.stop(); document.getElementById('is_recording').innerHTML = 'Recording: False'; } catch(e){}"
             )
+            import time as _t
+            _t.sleep(0.1)
+            el = self.driver.find_element(By.ID, "is_recording")
+            if el.text.startswith("Recording: True"):
+                print("\nSTT warning: stop_recording() called but mic remains active!")
+        except Exception:
+            pass
+
+    def start_recording(self):
+        """Forces the recording to start/resume via javascript."""
+        try:
+            self.driver.execute_script(
+                "try { window.aura_speech_flag = true; window.aura_recognition.start(); document.getElementById('is_recording').innerHTML = 'Recording: True'; } catch(e){}"
+            )
         except Exception:
             pass
 
