@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import secrets
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.adapters.ollama import OllamaClient
@@ -117,7 +117,7 @@ async def healthz(request: Request) -> dict:
     return await health(request)
 
 
-from fastapi.responses import Response
+
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
     svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#07111f" stroke="#48c6ff" stroke-width="2"/><text x="16" y="22" text-anchor="middle" fill="#48c6ff" font-size="16" font-family="sans-serif">J</text></svg>'
