@@ -115,6 +115,10 @@ def _speak_fast(text: str):
 def _stop_speaking():
     """Say 'stop' -> clear pending speech + halt current playback immediately."""
     try:
+        listener.stop_recording()
+    except Exception:
+        pass
+    try:
         while not _tts_queue.empty():
             try:
                 _tts_queue.get_nowait()
@@ -288,7 +292,7 @@ while True:
 
     low = speech.lower().strip()
     # STOP: interrupt immediately, no LLM call — works with/without wakeword
-    if low in _STOP_WORDS or low.startswith("stop ") or low.endswith(" stop") or low == "aura stop":
+    if low in _STOP_WORDS or low == "aura stop":
         _stop_speaking()
         print("Stopped.")
         continue

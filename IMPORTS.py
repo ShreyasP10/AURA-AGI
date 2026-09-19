@@ -39,7 +39,7 @@ class _LazyListener:
     def __init__(self, *a, **k): self._a=a; self._k=k; self._inst=None
     def _get(self):
         if self._inst is None:
-            _browser = os.environ.get("AURA_BROWSER", "brave")
+            _browser = os.environ.get("AURA_BROWSER", "chrome")
             print(f"Lazy init STT {_browser}...")
             self._inst=SpeechToTextListener(*self._a, **self._k)
         return self._inst

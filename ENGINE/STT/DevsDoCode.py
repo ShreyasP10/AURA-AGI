@@ -43,7 +43,7 @@ class SpeechToTextListener:
         elif "?silence=" not in website_path and "index.html" in website_path:
             website_path = website_path + f"?silence={silence_timeout}"
         if browser is None:
-            browser = os.environ.get("AURA_BROWSER", "brave").lower()
+            browser = os.environ.get("AURA_BROWSER", "chrome").lower()
 
         """Initializes the STT class with the given website path and language."""
         self.website_path = website_path
@@ -145,6 +145,15 @@ class SpeechToTextListener:
     def stream(self, content: str):
         """Prints the given content to the console with a yellow color, overwriting previous output, with "speaking..." added."""
         print("\033[96m\rUser Speaking: \033[93m" + f" {content}", end="", flush=True)
+
+    def stop_recording(self):
+        """Forces the active recording to stop via javascript."""
+        try:
+            self.driver.execute_script(
+                "try { window.aura_speech_flag = false; window.aura_recognition.stop(); document.getElementById('is_recording').innerHTML = 'Recording: False'; } catch(e){}"
+            )
+        except Exception:
+            pass
 
     def get_text(self) -> str:
         """Retrieves the transcribed text from the website."""
