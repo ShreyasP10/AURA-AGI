@@ -21,10 +21,10 @@ def call(number: str = "7272733232", isd_code: str = "+91") -> str:
     # Store the terminal response in variables
     terminal_error = result.stderr
 
-    if terminal_error is not None:
-        return "Disconnect the device from USB. More than one device connected."
+    if terminal_error:
+        return f"Error: {terminal_error}"
     else:
-        "Success"
+        return "Success"
 
 
 if __name__ == "__main__":

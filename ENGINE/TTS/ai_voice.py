@@ -175,8 +175,8 @@ def generate_tts_url(
         thread.start()
         threads.append(thread)
 
-    # Wait for the event to be set or all threads to finish
-    response_event.wait()
+    # Wait for the event to be set or all threads to finish (max 15 seconds)
+    response_event.wait(timeout=15)
 
     # If the event is set, terminate all threads
     for thread in threads:

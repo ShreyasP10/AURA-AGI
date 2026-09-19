@@ -52,6 +52,15 @@ class HotwordDetector:
         self.deactivation_sound_path = deactivation_sound_path
         self.prints = prints
 
+        self._stop_requested = False
+        self.porcupine = None
+        self.audio_interface = None
+        self.audio_stream = None
+
+    def _init_resources(self) -> None:
+        if self.porcupine is not None:
+            return
+
         import os
         import pathlib
 
@@ -108,6 +117,7 @@ class HotwordDetector:
         :param stop_event: An optional threading.Event() to stop listening externally.
         :return: True if a hotword is detected, False otherwise.
         """
+        self._init_resources()
         try:
             if self.deactivation_sound_path:
                 self._play_sound(self.deactivation_sound_path)
@@ -145,10 +155,13 @@ class HotwordDetector:
             print("Cleaning up resources...")
         if self.porcupine is not None:
             self.porcupine.delete()
+            self.porcupine = None
         if self.audio_stream is not None:
             self.audio_stream.close()
+            self.audio_stream = None
         if self.audio_interface is not None:
             self.audio_interface.terminate()
+            self.audio_interface = None
         if self.prints:
             print("Resources have been cleaned up.")
 

@@ -4,7 +4,6 @@ import base64
 import binascii
 import re
 from datetime import UTC, datetime
-from pathlib import Path
 
 from app.config import Settings
 

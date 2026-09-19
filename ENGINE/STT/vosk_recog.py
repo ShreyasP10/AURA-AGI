@@ -35,11 +35,17 @@ def speech_to_text(
 
     # Initialize PyAudio
     audio = pyaudio.PyAudio()
+    import os
+    mic_index = os.environ.get("AURA_MIC_INDEX")
+    if mic_index is not None:
+        mic_index = int(mic_index)
+
     stream = audio.open(
         format=pyaudio.paInt16,
         channels=1,
         rate=16000,
         input=True,
+        input_device_index=mic_index,
         frames_per_buffer=8192,
     )
     stream.start_stream()

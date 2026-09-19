@@ -176,7 +176,7 @@ def speak(
 
     # Function to request audio for each chunk
     def generate_audio_for_chunk(part_text: str, part_number: int):
-        while True:
+        for attempt in range(3):
             try:
                 payload = {"text": part_text, "model": available_voices[voice_name]}
                 response = requests.post(
@@ -192,10 +192,11 @@ def speak(
                 else:
                     if verbose:
                         print(f"No data received for chunk {part_number}. Retrying...")
-            except requests.RequestException:
-                # if verbose:
-                #     print(f"Error for chunk {part_number}: {e}. Retrying...")
+            except requests.RequestException as e:
+                if verbose:
+                    print(f"Error for chunk {part_number} (attempt {attempt+1}/3): {e}")
                 time.sleep(1)
+        raise Exception(f"Failed to process chunk {part_number} after 3 attempts")
 
     # Using ThreadPoolExecutor to handle requests concurrently
     with ThreadPoolExecutor() as executor:

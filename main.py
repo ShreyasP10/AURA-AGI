@@ -62,7 +62,25 @@
 #  got even better! Happy coding!
 #  ----------------------------------------------------------------------------
 
-from IMPORTS import *
+from IMPORTS import (
+    os,
+    concurrent,
+    speak,
+    openrouter,
+    deepInfra_TEXT,
+    Hugging_Face_TEXT,
+    deepInfra_VISION,
+    decohere_ai,
+    jenna_reader,
+    chrome_latest_url,
+    camera_vision,
+    INSTRUCTIONS,
+    BISECTORS,
+    system_theme,
+    taskbar,
+    listener,
+    history_manager,
+)
 import queue as _queue
 import threading as _threading
 import time as _time
@@ -527,6 +545,7 @@ while True:
         # STREAMING: Groq stream -> speak sentence-wise (was 2.1s wait -> 0.4s first word)
         # REALTIME: max_tokens 150 (voice, was 512) + voice-brevity prompt + flush on ,;: too + time flush
         chat_response = ""
+        first = True
         try:
             from groq import Groq
 
@@ -542,7 +561,6 @@ while True:
                 stream=True,
             )
             buffer = ""
-            first = True
             _last_flush = _time.time()
 
             for chunk in stream:
@@ -587,7 +605,7 @@ while True:
         if not chat_response or not chat_response.strip():
             chat_response = "Sorry, I didn't catch that. Could you say again?"
         # if we streamed, sentences already spoken via queue, just render panel; else speak once
-        streamed = "first" in locals() and not first  # first False means we streamed
+        streamed = not first  # first False means we streamed
         _ui_print_ai(chat_response)
         if not streamed:
             try:

@@ -42,7 +42,7 @@ def _sanitize_for_tts(text: str) -> str:
     # musical notes / control chars from streamed deltas
     t = t.replace("♪", " ").replace("◙", " ").replace("`", " ")
     t = re.sub(r"\s+", " ", t).strip()
-    return t[:500]  # edge-tts per-call cap to avoid throttle
+    return t[:2000]  # edge-tts per-call cap to avoid throttle
 
 
 def speak(

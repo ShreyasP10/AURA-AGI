@@ -204,7 +204,7 @@ class SpeechToTextListener:
         # Verify the language selection (non-fatal)
         try:
             if not self.verify_language_selection():
-                print(f"\nSTT warn: language select failed, continuing anyway")
+                print("\nSTT warn: language select failed, continuing anyway")
         except Exception:
             pass
 
