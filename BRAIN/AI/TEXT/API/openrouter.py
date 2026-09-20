@@ -11,7 +11,9 @@ load_dotenv()  # Load environment variables from .env file
 def generate(
     conversation_history: List[Dict[str, str]],
     system_prompt: Optional[str] = "You are a helpful and friendly AI assistant.",
-    model: str = "meta-llama/llama-3-8b-instruct:free",
+    # NOTE 2026: llama-3-8b-instruct:free is retired (API returns 404 "No endpoints
+    # found"). Verify a live :free model at https://openrouter.ai/models if this 404s.
+    model: str = "meta-llama/llama-3.1-8b-instruct:free",
     max_tokens: int = 8096,
     temperature: float = 0.85,
     frequency_penalty: float = 0.34,
@@ -64,10 +66,18 @@ def generate(
     """
 
     # Add the system prompt to the beginning of the conversation history
+    # Accept a plain string too (main.py website branch passes one query string)
+    if isinstance(conversation_history, str):
+        conversation_history = [{"role": "user", "content": conversation_history}]
+    else:
+        conversation_history = list(conversation_history)  # never mutate caller list
     if system_prompt:
         conversation_history.insert(0, {"role": "system", "content": system_prompt})
 
-    headers = {"Authorization": f"Bearer {os.environ.get('OPENROUTER')}"}
+    headers = {
+        "Authorization": f"Bearer {os.environ.get('OPENROUTER')}",
+        "Content-Type": "application/json",
+    }
     payload = json.dumps(
         {
             "messages": conversation_history,
@@ -88,21 +98,32 @@ def generate(
             headers=headers,
             data=payload,
             stream=True,
+            timeout=60,
         )
+        # Fail fast on HTTP errors (401 bad key, 429 rate-limit) with readable message
+        if response.status_code != 200:
+            return (
+                f"Failed to Get Response\nError: HTTP {response.status_code}\n"
+                f"Response: {response.text[:500]}"
+            )
         completion = ""
         for line in response.iter_lines(decode_unicode=True, chunk_size=1):
             if line:
                 modified_value: str = re.sub("data:", "", line)
                 try:
                     json_modified_value = json.loads(modified_value)
-                    completion += json_modified_value["choices"][0]["delta"]["content"]
-                    if stream:
-                        print(
-                            json_modified_value["choices"][0]["delta"]["content"],
-                            end="",
-                            flush=True,
-                        )
-                except json.JSONDecodeError:
+                    delta = (
+                        json_modified_value.get("choices", [{}])[0]
+                        .get("delta", {})
+                        .get("content", "")
+                    )
+                    if delta:
+                        completion += delta
+                        if stream:
+                            print(delta, end="", flush=True)
+                    elif json_modified_value.get("error"):
+                        return f"Failed to Get Response\nError: {json_modified_value['error']}"
+                except (json.JSONDecodeError, KeyError, IndexError, TypeError):
                     continue
         return completion
     except requests.RequestException as e:

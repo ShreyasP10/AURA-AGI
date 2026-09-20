@@ -36,7 +36,7 @@ def speak(
     payload = {"model": model, "text": text}
 
     # Send the POST request
-    response = requests.post(url, json=payload)
+    response = requests.post(url, json=payload, timeout=30)
     if response.status_code != 200:
         return f"Error: {response.status_code} - {response.text}"
     else:

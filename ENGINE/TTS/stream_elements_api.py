@@ -28,7 +28,8 @@ def generate_audio(message: str, voice: str = "Brian"):
 
     # Try to send request or return None on failure
     try:
-        result = requests.get(url=url, headers=headers)
+        result = requests.get(url=url, headers=headers, timeout=30)
+        result.raise_for_status()
         return result.content
     except Exception:
         return None
@@ -50,10 +51,12 @@ def speak(
     """
     try:
         result_content = generate_audio(message, voice)
+        if not result_content:
+            return "Error playing TTS: no audio received"
         file_path = os.path.join(folder, f"{voice}{extension}")
         with open(file_path, "wb") as file:
             file.write(result_content)
-        playsound.playsound(file_path, "wb")
+        playsound.playsound(file_path)
         os.remove(file_path)
         return None
     except Exception as e:

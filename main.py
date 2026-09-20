@@ -377,7 +377,7 @@ while True:
                 _ui_print_ai(_fast)
                 _speak_fast(_fast)
                 try:
-                    history_manager.update_history(speech, _fast)
+                    history_manager.update_file(speech, _fast)
                 except Exception:
                     pass
                 continue
@@ -399,7 +399,7 @@ while True:
             try:
                 res = open_app(speech)
                 print("AppLauncher>>", res)
-                speak(res)
+                _speak_fast(res)
                 continue
             except Exception as e:
                 print(f"App launcher fail {e}")
@@ -407,7 +407,7 @@ while True:
             try:
                 res = find_and_summarize(speech)
                 print("FileFinder>>", res)
-                speak(res[:300])
+                _speak_fast(res[:300])
                 continue
             except Exception as e:
                 print(f"Finder fail {e}")
@@ -433,7 +433,7 @@ while True:
                     t = add_task(speech)
                     res = f"Task added: {t['text']}"
                 print("TaskBoard>>", res)
-                speak(res)
+                _speak_fast(res)
                 continue
             except Exception as e:
                 print(f"Task fail {e}")
@@ -441,7 +441,7 @@ while True:
             try:
                 res = ocr_vision_live(speech)
                 print("OCR>>", res[:80])
-                speak(res[:400])
+                _speak_fast(res[:400])
                 continue
             except Exception as e:
                 print(f"OCR fail {e}")
@@ -449,7 +449,7 @@ while True:
             try:
                 res = see_screen(speech)
                 print("ScreenSee>>", res[:80])
-                speak(res[:400])
+                _speak_fast(res[:400])
                 continue
             except Exception as e:
                 print(f"ScreenSee fail {e}")
@@ -495,55 +495,47 @@ while True:
         _cls_res = (response_classifier.result() or "").lower()
         _def_res = default_response.result() or "Sorry, I could not think of a reply."
 
-        if "yes" in _img_res.lower():
-            speak("Sure Sir, Generating Your Image")
+        _img_text = (_img_res or "").strip().lower()
+        _is_image_req = _img_text in ("yes", "response: yes") or _img_text.endswith("response: yes")
+
+        if _is_image_req:
+            _speak_fast("Sure Sir, Generating Your Image")
             try:
                 ok, msg = decohere_ai.generate(speech)
                 print("Image>>", ok, msg)
-                speak("Image ready" if ok else f"Image failed: {msg}")
+                _speak_fast("Image ready" if ok else f"Image failed: {msg}")
             except Exception as e:
                 print(f"Image fail {e}")
-                speak("Image generation failed")
+                _speak_fast("Image generation failed")
             continue
 
         elif all(x in _cls_res for x in ("vision", "website", "call", "youtube")):
             print("\033[91mConfused with Classification. Using Default Response\033[0m")
-            speak(_def_res)
+            _speak_fast(_def_res)
 
         elif "system control" in _cls_res:
-            # Create a ThreadPoolExecutor and submit the speak function
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                speak_future = executor.submit(
-                    speak, "Sure Sir. Setting the Required Settings"
-                )
-
-                try:
-                    speech_lower = speech.lower()
-                    if "dark" in speech_lower or "light" in speech_lower:
-                        theme = 0 if "dark" in speech_lower else 1
-                        system_theme.WindowsThemeManager().set_theme(theme)
-                    elif any(
-                        alignment in speech_lower
-                        for alignment in ["left", "center", "centre", "right"]
-                    ):
-                        alignment = 0 if "left" in speech_lower else 1
-                        taskbar.TaskbarCustomizer().set_alignment(alignment)
-                    elif "temperature" in speech_lower:
-                        taskbar.TaskbarCustomizer().set_temperature_display(1)
-                    else:
-                        print("System control: no matching action")
-                except Exception as e:
-                    print(f"System control fail (Windows only?): {e}")
-
-                speak_future.result()
+            _speak_fast("Sure Sir. Setting the Required Settings")
+            try:
+                speech_lower = speech.lower()
+                if "dark" in speech_lower or "light" in speech_lower:
+                    theme = 0 if "dark" in speech_lower else 1
+                    system_theme.WindowsThemeManager().set_theme(theme)
+                elif any(
+                    alignment in speech_lower
+                    for alignment in ["left", "center", "centre", "right"]
+                ):
+                    alignment = 0 if "left" in speech_lower else 1
+                    taskbar.TaskbarCustomizer().set_alignment(alignment)
+                elif "temperature" in speech_lower:
+                    taskbar.TaskbarCustomizer().set_temperature_display(1)
+                else:
+                    print("System control: no matching action")
+            except Exception as e:
+                print(f"System control fail (Windows only?): {e}")
 
         elif "vision" in _cls_res:
-            try:
-                concurrent.futures.ThreadPoolExecutor().submit(
-                    speak, "Analysing, Please Wait"
-                )
-            except Exception:
-                pass
+            _speak_fast("Analysing, Please Wait")
+            image_path = None
             try:
                 image_path = camera_vision.realtime_vision()
                 response_vision = deepInfra_VISION.generate(
@@ -552,18 +544,19 @@ while True:
                     image_path=image_path,
                 )
                 print("AI>>", response_vision)
+                _speak_fast(response_vision)
+            except Exception as e:
+                print(f"Vision fail {e}")
+                _speak_fast("Vision failed. Check camera.")
+            finally:
                 try:
-                    if os.path.exists(image_path):
+                    if image_path and os.path.exists(image_path):
                         os.remove(image_path)
                 except Exception:
                     pass
-                speak(response_vision)
-            except Exception as e:
-                print(f"Vision fail {e}")
-                speak("Vision failed. Check camera.")
 
         elif "call" in _cls_res:
-            speak("Sure Sir. Calling")
+            _speak_fast("Sure Sir. Calling")
             # make_call.call()
 
         elif "website" in _cls_res:
@@ -575,15 +568,15 @@ while True:
                     f"METEDATA: {site_markdown}\n\nQUERY: {speech}",
                     system_prompt="Keep you responses very short and concise",
                 )
-                speak(response)
+                _speak_fast(response)
             except Exception as e:
                 print(f"Website fail {e}")
-                speak("Website summarization failed.")
+                _speak_fast("Website summarization failed.")
 
         else:
             # taskExecutor.process_query(speech)
             print("AI>>", _def_res)
-            speak(_def_res)
+            _speak_fast(_def_res)
 
     else:
         history_manager.store_history(

@@ -13,10 +13,25 @@ def call(number: str = "7272733232", isd_code: str = "+91") -> str:
     - str: A message indicating the status of the call initiation process.
     """
 
-    command = "adb.exe shell am start -a android.intent.action.CALL -d tel:{}{}".format(
-        isd_code, number
-    )
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    import re as _re
+
+    # Validate: digits only (plus optional leading + on ISD) — never pass raw
+    # voice input to a shell.
+    number = _re.sub(r"\D", "", number or "")
+    isd_code = "+" + _re.sub(r"\D", "", isd_code or "")
+    if not number:
+        return "No phone number provided."
+    command = [
+        "adb.exe",
+        "shell",
+        "am",
+        "start",
+        "-a",
+        "android.intent.action.CALL",
+        "-d",
+        f"tel:{isd_code}{number}",
+    ]
+    result = subprocess.run(command, shell=False, capture_output=True, text=True)
     print("Successfully Called the Number {}".format(number))
     # Store the terminal response in variables
     terminal_error = result.stderr

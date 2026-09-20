@@ -27,7 +27,8 @@ def get_proxies(
 
     # Fetch proxies only once
     resp = requests.get(
-        "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all"
+        "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all",
+        timeout=30,
     )
     proxies = [
         proxy.strip()

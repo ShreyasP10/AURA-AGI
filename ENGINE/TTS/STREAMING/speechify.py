@@ -56,7 +56,7 @@ class SpeechSynthesizer:
             },
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
 
         audio_data = base64.b64decode(response.json()["audioStream"])

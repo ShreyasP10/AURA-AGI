@@ -25,7 +25,8 @@ def get_proxies(
     if prints:
         print("Sending Request to get the all proxies......")
     resp = requests.get(
-        "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all"
+        "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all",
+        timeout=30,
     )
     # proxies = resp.text.strip().split("\n")
     proxies = resp.text.strip().split("\n")[:number_of_proxies]
@@ -136,7 +137,7 @@ def generate_tts_url(
         try:
             # Send the POST request with the specified proxy
             response = requests.post(
-                url, data=payload, proxies={"http": proxy, "https": proxy}
+                url, data=payload, proxies={"http": proxy, "https": proxy}, timeout=15
             )
             # Check if the request was successful (status code 200)
             if response.status_code == 200:
@@ -205,7 +206,7 @@ def download_audio_speech(extracted_url_: str, prints: bool = False) -> str:
     if prints:
         print("Requesting the audio url to download the audio")
     # Download file
-    response = requests.get(extracted_url_)
+    response = requests.get(extracted_url_, timeout=30)
 
     # Get file name from URL
     file_name = "ASSETS/" + os.path.basename(extracted_url_)

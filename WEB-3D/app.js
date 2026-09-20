@@ -329,7 +329,7 @@ function createRecognition(){
       } else {
         // show faint hearing + hint
         liveText.textContent=full.slice(-60) || '...';
-        document.getElementById('statusLabel').innerHTML='<i class="fa-solid fa-ear-listen"></i> say <b>hi aura</b> — heard: "'+full.slice(-30)+'"';
+        document.getElementById('statusLabel').innerHTML='<i class="fa-solid fa-ear-listen"></i> say <b>hi aura</b> — heard: "'+escapeHtml(full.slice(-30))+'"';
       }
       return;
     }

@@ -42,7 +42,24 @@ from PLAYGROUND.CAMERA import camera_vision
 from PROMPTS import INSTRUCTIONS, BISECTORS
 
 from TOOLS import Alpaca_DS_Converser
-from TOOLS.SYSTEM_SETTINGS import system_theme, taskbar
+
+try:
+    from TOOLS.SYSTEM_SETTINGS import system_theme, taskbar
+except ImportError:  # winreg missing on Linux/macOS — system control stays unavailable
+    def _win_only(*a, **k):
+        raise RuntimeError(
+            "System control needs Windows (winreg). "
+            "Run on Windows or pip install pywin32."
+        )
+
+    class _UnavailableThemeModule:
+        WindowsThemeManager = staticmethod(_win_only)
+
+    class _UnavailableTaskbarModule:
+        TaskbarCustomizer = staticmethod(_win_only)
+
+    system_theme = _UnavailableThemeModule  # type: ignore
+    taskbar = _UnavailableTaskbarModule  # type: ignore
 
 """----------------------------------------------------------------------------------------------INITIALIZATION (LAZY - 2x faster cold start)-------------------------------------------------------------------"""
 

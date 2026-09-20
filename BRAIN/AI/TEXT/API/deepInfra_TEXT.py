@@ -43,10 +43,17 @@ def generate(
 
     Returns:
         Union[str, None]: The LLM's response if successful, otherwise None.
+
+    Note:
+        DeepInfra's web endpoint is blocked, so this uses Groq as a fallback
+        (default model ``llama-3.1-8b-instruct``). The ``model`` parameter is
+        honored when it names a Groq model, otherwise the default is used.
+        The caller's ``conversation`` list is never mutated.
     """
     import os
     from groq import Groq
 
+    _DEFAULT_MODEL = "llama-3.1-8b-instant"
     if isinstance(conversation, str):
         conversation = [{"role": "user", "content": conversation}]
     elif not isinstance(conversation, list):
@@ -54,14 +61,17 @@ def generate(
             "Conversation must be either a string or a list of dictionaries"
         )
 
-    conversation.insert(0, {"role": "system", "content": system_prompt})
+    # Copy: never mutate the caller's list (main.py passes live history)
+    messages = [{"role": "system", "content": system_prompt}] + list(conversation)
+
+    # Honor Groq-style model ids; fall back to default otherwise
+    use_model = model if isinstance(model, str) and "/" not in model and "-" in model else _DEFAULT_MODEL
 
     try:
-        # Fallback to a fast Groq model since DeepInfra web endpoint is blocked
-        client = Groq(api_key=os.environ.get("GROQ_AI"))
+        client = Groq(api_key=os.environ.get("GROQ_AI"), timeout=30)
         chat_completion = client.chat.completions.create(
-            messages=conversation,
-            model="llama-3.1-8b-instant",
+            messages=messages,
+            model=use_model,
             temperature=temperature,
             max_tokens=max_tokens,
             stream=stream,

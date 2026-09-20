@@ -103,7 +103,7 @@ def fetch_search_results(
                 "X-API-KEY": os.getenv("SERPER_API_KEY"),
                 "Content-Type": "application/json",
             }
-            response = requests.post(url, headers=headers, data=payload)
+            response = requests.post(url, headers=headers, data=payload, timeout=30)
             if response.status_code == 200:
                 data = response.json()
                 for j, result in enumerate(data.get("organic", [])):
