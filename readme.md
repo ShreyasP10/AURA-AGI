@@ -390,7 +390,7 @@ MIT — see [LICENCE](LICENCE).
 
 | Contributor | Role | GitHub |
 |-------------|------|--------|
-| **Shreyas Pawar** | Lead Developer (AURA-AGI) | [@ShreyasP10](https://github.com/ShreyasP10) |
+| **Shreyas Pawar** | Lead Developer | [@ShreyasP10](https://github.com/ShreyasP10) |
 | **Atharva Mahajan** | Contributor | [@mahajanatharva1042](https://github.com/mahajanatharva1042) |
 
 <div align="center">
