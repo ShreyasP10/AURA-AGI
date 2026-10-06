@@ -1,5 +1,3 @@
-import json
-import requests
 from typing import Union, List, Dict
 
 
@@ -45,10 +43,17 @@ def generate(
 
     Returns:
         Union[str, None]: The LLM's response if successful, otherwise None.
+
+    Note:
+        DeepInfra's web endpoint is blocked, so this uses Groq as a fallback
+        (default model ``llama-3.1-8b-instruct``). The ``model`` parameter is
+        honored when it names a Groq model, otherwise the default is used.
+        The caller's ``conversation`` list is never mutated.
     """
     import os
     from groq import Groq
 
+    _DEFAULT_MODEL = "llama-3.1-8b-instant"
     if isinstance(conversation, str):
         conversation = [{"role": "user", "content": conversation}]
     elif not isinstance(conversation, list):
@@ -56,33 +61,40 @@ def generate(
             "Conversation must be either a string or a list of dictionaries"
         )
 
-    conversation.insert(0, {"role": "system", "content": system_prompt})
+    # Copy: never mutate the caller's list (main.py passes live history)
+    messages = [{"role": "system", "content": system_prompt}] + list(conversation)
 
-    try:
-        # Fallback to a fast Groq model since DeepInfra web endpoint is blocked
-        client = Groq(api_key=os.environ.get("GROQ_AI"))
-        chat_completion = client.chat.completions.create(
-            messages=conversation,
-            model="llama-3.1-8b-instant",
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=stream,
-        )
-        
-        full_response = ""
-        if stream:
-            for chunk in chat_completion:
-                delta = chunk.choices[0].delta.content or ""
-                print(delta, end="", flush=True)
-                full_response += delta
-        else:
-            full_response = chat_completion.choices[0].message.content
+    # Honor Groq-style model ids; fall back to default otherwise
+    use_model = model if isinstance(model, str) and "/" not in model and "-" in model else _DEFAULT_MODEL
 
-        return full_response.strip()
+    import time
+    for attempt in range(3):
+        try:
+            client = Groq(api_key=os.environ.get("GROQ_AI"), timeout=30)
+            chat_completion = client.chat.completions.create(
+                messages=messages,
+                model=use_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=stream,
+            )
 
-    except Exception as e:
-        print(f"Error occurred during Groq fallback API request: {e}")
-        return None
+            full_response = ""
+            if stream:
+                for chunk in chat_completion:
+                    delta = chunk.choices[0].delta.content or ""
+                    print(delta, end="", flush=True)
+                    full_response += delta
+            else:
+                full_response = chat_completion.choices[0].message.content
+
+            return full_response.strip()
+
+        except Exception as e:
+            if attempt == 2:
+                print(f"Error occurred during Groq fallback API request after 3 retries: {e}")
+                return None
+            time.sleep(1.0 * (2 ** attempt))
 
 
 if __name__ == "__main__":

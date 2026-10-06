@@ -24,4 +24,8 @@ BraveHistoryCopy.txt
 .venv/
 .idea/
 .vscode/
+ruff_errors.txt
 
+codebase.md
+tempcode.txt
+AURA_AGI_Audit_Report.md

@@ -66,29 +66,39 @@ def generate(
     else:
         formatted_prompt = f"**Instructions**\n{system_prompt}\n\n **User**\n{prompt}\n\n**Assistant: **"
 
-    try:
-        response = ""
-        for response_chunk in client.text_generation(
-            formatted_prompt,
-            temperature=temperature,
-            max_new_tokens=max_new_tokens,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            do_sample=True,
-            stream=True,
-        ):
-            response += response_chunk
-            if verbose:
-                print(response_chunk, end="", flush=True)
-    except Exception:
-        response = client.text_generation(
-            formatted_prompt,
-            temperature=temperature,
-            max_new_tokens=max_new_tokens,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            do_sample=True,
-        )
+    import time
+    for attempt in range(3):
+        try:
+            response = ""
+            for response_chunk in client.text_generation(
+                formatted_prompt,
+                temperature=temperature,
+                max_new_tokens=max_new_tokens,
+                top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                do_sample=True,
+                stream=True,
+            ):
+                response += response_chunk
+                if verbose:
+                    print(response_chunk, end="", flush=True)
+            break
+        except Exception:
+            try:
+                response = client.text_generation(
+                    formatted_prompt,
+                    temperature=temperature,
+                    max_new_tokens=max_new_tokens,
+                    top_p=top_p,
+                    repetition_penalty=repetition_penalty,
+                    do_sample=True,
+                )
+                break
+            except Exception as e:
+                if attempt == 2:
+                    print(f"Hugging Face API failed after 3 retries: {e}")
+                    return ""
+                time.sleep(1.0 * (2 ** attempt))
 
     # Clean the response from potential end-of-text tokens
     response = response.replace("<|end|>", "")

@@ -39,11 +39,15 @@ class SpeechToTextListener:
             local_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), "src", "index.html"
             )
-            website_path = "file:///" + local_path.replace("\\", "/") + f"?silence={silence_timeout}"
+            website_path = (
+                "file:///"
+                + local_path.replace("\\", "/")
+                + f"?silence={silence_timeout}"
+            )
         elif "?silence=" not in website_path and "index.html" in website_path:
             website_path = website_path + f"?silence={silence_timeout}"
         if browser is None:
-            browser = os.environ.get("AURA_BROWSER", "brave").lower()
+            browser = os.environ.get("AURA_BROWSER", "chrome").lower()
 
         """Initializes the STT class with the given website path and language."""
         self.website_path = website_path
@@ -114,6 +118,7 @@ class SpeechToTextListener:
                 print("Trying Chrome fallback...")
                 try:
                     from selenium.webdriver.chrome.options import Options as _Opts
+
                     _co = _Opts()
                     _co.add_argument("--use-fake-ui-for-media-stream")
                     _co.add_argument("--allow-file-access-from-files")
@@ -130,11 +135,17 @@ class SpeechToTextListener:
                     self.driver = webdriver.Chrome(options=self.chrome_options)
                     print("Chrome fallback started.")
                 except Exception as e2:
-                    print(f"Chrome fallback also failed ({type(e2).__name__}): {str(e2)[:300]}")
-                    print("Fix: update browser + `pip install -U selenium`, or use AURA_TEXT_MODE=1.")
+                    print(
+                        f"Chrome fallback also failed ({type(e2).__name__}): {str(e2)[:300]}"
+                    )
+                    print(
+                        "Fix: update browser + `pip install -U selenium`, or use AURA_TEXT_MODE=1."
+                    )
                     raise
             else:
-                print("Fix: update browser + `pip install -U selenium`, or use AURA_TEXT_MODE=1.")
+                print(
+                    "Fix: update browser + `pip install -U selenium`, or use AURA_TEXT_MODE=1."
+                )
                 raise
         self.wait = WebDriverWait(self.driver, wait_time)
         try:
@@ -145,6 +156,30 @@ class SpeechToTextListener:
     def stream(self, content: str):
         """Prints the given content to the console with a yellow color, overwriting previous output, with "speaking..." added."""
         print("\033[96m\rUser Speaking: \033[93m" + f" {content}", end="", flush=True)
+
+    def stop_recording(self):
+        """Forces the active recording to stop via javascript."""
+        try:
+            self.driver.execute_script(
+                "try { window.aura_speech_flag = false; window.aura_recognition.stop(); document.getElementById('is_recording').innerHTML = 'Recording: False'; } catch(e){}"
+            )
+            import time as _t
+
+            _t.sleep(0.1)
+            el = self.driver.find_element(By.ID, "is_recording")
+            if el.text.startswith("Recording: True"):
+                print("\nSTT warning: stop_recording() called but mic remains active!")
+        except Exception:
+            pass
+
+    def start_recording(self):
+        """Forces the recording to start/resume via javascript."""
+        try:
+            self.driver.execute_script(
+                "try { window.aura_speech_flag = true; window.aura_recognition.start(); document.getElementById('is_recording').innerHTML = 'Recording: True'; } catch(e){}"
+            )
+        except Exception:
+            pass
 
     def get_text(self) -> str:
         """Retrieves the transcribed text from the website."""
@@ -172,6 +207,7 @@ class SpeechToTextListener:
     def main(self, timeout_s: int = 45) -> Optional[str]:
         """Performs speech-to-text conversion and returns the transcribed text."""
         import time as _t
+
         try:
             self.driver.get(self.website_path)
         except Exception as e:
@@ -194,7 +230,7 @@ class SpeechToTextListener:
         except Exception as e:
             print(f"\nSTT page load timeout: {e}")
             return None
-        
+
         # Select the language using JavaScript
         try:
             self.select_language()
@@ -204,7 +240,7 @@ class SpeechToTextListener:
         # Verify the language selection (non-fatal)
         try:
             if not self.verify_language_selection():
-                print(f"\nSTT warn: language select failed, continuing anyway")
+                print("\nSTT warn: language select failed, continuing anyway")
         except Exception:
             pass
 
@@ -222,7 +258,11 @@ class SpeechToTextListener:
             print(f"\nSTT recording flag timeout: {e}")
             return None
 
-        print("\033[94m\rListening... (speak now, or Ctrl+C for typing)\033[0m", end="", flush=True)
+        print(
+            "\033[94m\rListening... (speak now, or Ctrl+C for typing)\033[0m",
+            end="",
+            flush=True,
+        )
         start = _t.time()
         last_text = ""
         while True:
@@ -260,10 +300,13 @@ class SpeechToTextListener:
         except Exception:
             pass
         import time as _t
+
         _t.sleep(1.0)
         from selenium import webdriver as _wd
+
         self.driver = _wd.Chrome(options=self.chrome_options)
         from selenium.webdriver.support.ui import WebDriverWait as _W
+
         self.wait = _W(self.driver, 30)
 
     def listen(self, prints: bool = False, timeout_s: int = 45) -> Optional[str]:
@@ -272,6 +315,7 @@ class SpeechToTextListener:
         listening process completes successfully.
         """
         import time as _t
+
         deadline = _t.time() + timeout_s + 15
         while True:
             if _t.time() > deadline:

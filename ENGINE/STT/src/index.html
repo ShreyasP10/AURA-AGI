@@ -293,10 +293,11 @@
         const language_select = document.getElementById('language_select');
 
         click_to_record.addEventListener('click',function(){
-            var speech = true;
+            window.aura_speech_flag = true;
             window.SpeechRecognition = window.webkitSpeechRecognition;
 
             const recognition = new SpeechRecognition();
+            window.aura_recognition = recognition;
             recognition.interimResults = true;
             recognition.continuous = true; // keep listening for continuous speech
             recognition.lang = language_select.value; 
@@ -311,7 +312,7 @@
 
             recognition.addEventListener('end', () => {
                 // auto-restart if stopped due to browser's short pause and not due to silence timeout
-                if (is_recording.innerHTML === "Recording: True" && speech) {
+                if (is_recording.innerHTML === "Recording: True" && window.aura_speech_flag) {
                     try { recognition.start(); } catch(e) {}
                 } else {
                     is_recording.innerHTML = "Recording: False";
@@ -337,7 +338,7 @@
                 // reset silence timer on every result (speech detected)
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
-                    speech = false;
+                    window.aura_speech_flag = false;
                     try { recognition.stop(); } catch(e) {}
                     is_recording.innerHTML = "Recording: False";
                 }, SILENCE_TIMEOUT);
@@ -347,12 +348,12 @@
             recognition.addEventListener('speechend', () => {
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
-                    speech = false;
+                    window.aura_speech_flag = false;
                     try { recognition.stop(); } catch(e) {}
                 }, SILENCE_TIMEOUT);
             });
 
-            if (speech == true) {
+            if (window.aura_speech_flag == true) {
                 recognition.start();
             }
         })

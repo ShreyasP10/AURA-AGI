@@ -23,6 +23,7 @@ class Settings:
     owner_profile_name: str
     action_webhook_url: str
     action_webhook_token: str
+    api_secret: str
     google_drive_sync_dir: Path | None
 
 
@@ -30,21 +31,42 @@ class Settings:
 def get_settings() -> Settings:
     data_dir = Path(os.getenv("DATA_DIR", "/data"))
     data_dir.mkdir(parents=True, exist_ok=True)
+    import secrets
+    _api_secret = os.getenv("API_SECRET", "")
+    if not _api_secret:
+        _api_secret = secrets.token_hex(32)
+        print(f"\n[SECURITY] Generated missing API_SECRET. Use Bearer token: {_api_secret}\n")
+    
+    searxng_secret = os.getenv("SEARXNG_SECRET", "")
+    if not searxng_secret.strip() or "replace-with-a-random-secret" in searxng_secret.lower():
+        raise ValueError("SEARXNG_SECRET is missing or still has the placeholder value. Run: openssl rand -hex 32")
+
     return Settings(
         app_name=os.getenv("APP_NAME", "AURA Kiosk Agent"),
         data_dir=data_dir,
         database_path=data_dir / os.getenv("DATABASE_FILE", "agent.db"),
-        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434").rstrip("/"),
+        ollama_base_url=os.getenv(
+            "OLLAMA_BASE_URL", "http://host.docker.internal:11434"
+        ).rstrip("/"),
         ollama_model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
         ollama_vision_model=os.getenv("OLLAMA_VISION_MODEL", ""),
-        searxng_base_url=os.getenv("SEARXNG_BASE_URL", "http://searxng:8080").rstrip("/"),
+        searxng_base_url=os.getenv("SEARXNG_BASE_URL", "http://searxng:8080").rstrip(
+            "/"
+        ),
         search_result_limit=max(1, min(int(os.getenv("SEARCH_RESULT_LIMIT", "6")), 12)),
-        request_timeout_seconds=max(5.0, float(os.getenv("REQUEST_TIMEOUT_SECONDS", "45"))),
+        request_timeout_seconds=max(
+            5.0, float(os.getenv("REQUEST_TIMEOUT_SECONDS", "45"))
+        ),
         agent_step_limit=max(1, min(int(os.getenv("AGENT_STEP_LIMIT", "4")), 8)),
-        max_context_chars=max(2000, min(int(os.getenv("MAX_CONTEXT_CHARS", "12000")), 40000)),
+        max_context_chars=max(
+            2000, min(int(os.getenv("MAX_CONTEXT_CHARS", "12000")), 40000)
+        ),
         public_origin=os.getenv("PUBLIC_ORIGIN", ""),
         owner_profile_name=os.getenv("OWNER_PROFILE_NAME", "Owner"),
         action_webhook_url=os.getenv("ACTION_WEBHOOK_URL", "").rstrip("/"),
         action_webhook_token=os.getenv("ACTION_WEBHOOK_TOKEN", ""),
-        google_drive_sync_dir=Path(os.environ["GOOGLE_DRIVE_SYNC_DIR"]) if os.getenv("GOOGLE_DRIVE_SYNC_DIR") else None,
+        api_secret=_api_secret,
+        google_drive_sync_dir=Path(os.environ["GOOGLE_DRIVE_SYNC_DIR"])
+        if os.getenv("GOOGLE_DRIVE_SYNC_DIR")
+        else None,
     )

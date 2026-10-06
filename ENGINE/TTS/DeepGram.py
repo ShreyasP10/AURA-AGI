@@ -52,7 +52,7 @@ def speak(
     }
     payload = {"text": text, "model": model}
 
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload, timeout=30)
     response.raise_for_status()  # Ensure the request was successful
 
     with open(filename, "wb") as audio_file:

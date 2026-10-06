@@ -15,6 +15,7 @@ services:
       - ALL
     pids_limit: 256
     environment:
+      API_SECRET: ${API_SECRET:?Set API_SECRET in .env}
       APP_NAME: ${APP_NAME:-AURA Kiosk Agent}
       DATA_DIR: /data
       DATABASE_FILE: ${DATABASE_FILE:-agent.db}

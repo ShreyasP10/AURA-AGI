@@ -20,18 +20,34 @@ class OllamaClient:
             async with httpx.AsyncClient(timeout=min(self.timeout, 8.0)) as client:
                 response = await client.get(f"{self.base_url}/api/tags")
                 response.raise_for_status()
-                models = [item.get("name", "") for item in response.json().get("models", [])]
-            return {"reachable": True, "configured_model": self.model, "model_available": self.model in models, "models": models}
+                models = [
+                    item.get("name", "") for item in response.json().get("models", [])
+                ]
+            return {
+                "reachable": True,
+                "configured_model": self.model,
+                "model_available": self.model in models,
+                "models": models,
+            }
         except httpx.HTTPError as error:
-            return {"reachable": False, "configured_model": self.model, "model_available": False, "error": str(error)}
+            return {
+                "reachable": False,
+                "configured_model": self.model,
+                "model_available": False,
+                "error": str(error),
+            }
 
-    async def complete(self, messages: list[dict[str, str]], temperature: float = 0.2) -> str:
+    async def complete(
+        self, messages: list[dict[str, str]], temperature: float = 0.2
+    ) -> str:
         text = ""
         async for token in self.stream(messages, temperature=temperature):
             text += token
         return text.strip()
 
-    async def stream(self, messages: list[dict[str, str]], temperature: float = 0.2) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[dict[str, str]], temperature: float = 0.2
+    ) -> AsyncIterator[str]:
         payload = {
             "model": self.model,
             "messages": messages,
@@ -40,7 +56,9 @@ class OllamaClient:
         }
         timeout = httpx.Timeout(self.timeout, connect=min(self.timeout, 10.0))
         async with httpx.AsyncClient(timeout=timeout) as client:
-            async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
+            async with client.stream(
+                "POST", f"{self.base_url}/api/chat", json=payload
+            ) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     if not line:

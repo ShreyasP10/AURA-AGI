@@ -10,7 +10,9 @@ class MemoryService:
         self.database = database
         self.max_context_chars = max_context_chars
 
-    def context(self, profile_id: str, query: str) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+    def context(
+        self, profile_id: str, query: str
+    ) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
         memories = self.database.recall_memories(profile_id, query)
         turns = self.database.recent_turns(profile_id)
         compact_turns: list[dict[str, str]] = []
@@ -18,11 +20,13 @@ class MemoryService:
         for turn in reversed(turns):
             cost = len(turn["content"]) + 32
             if cost > remaining:
-                continue
+                break
             compact_turns.append({"role": turn["role"], "content": turn["content"]})
             remaining -= cost
         compact_turns.reverse()
         return compact_turns, memories
 
-    def remember(self, profile_id: str, content: str, category: str = "note", importance: int = 2) -> dict[str, Any]:
+    def remember(
+        self, profile_id: str, content: str, category: str = "note", importance: int = 2
+    ) -> dict[str, Any]:
         return self.database.create_memory(profile_id, content, category, importance)

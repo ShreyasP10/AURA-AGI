@@ -62,6 +62,15 @@ class ConversationHistoryManager:
             if isinstance(entry, dict):
                 data.append(entry)
 
+        # Bound the file like in-memory history (word window x2 for file safety)
+        try:
+            _limit = self.history_offset * 2
+            _words = sum(len(e.get("content", "").split()) for e in data)
+            while _words > _limit and len(data) > 2:
+                _words -= len(data.pop(0).get("content", "").split())
+        except Exception:
+            pass
+
         with open(self.conversation_file, "w") as file:
             json.dump(data, file, indent=4)
 

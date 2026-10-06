@@ -20,18 +20,24 @@ class TaskPlannerTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.database = Database(Path(self.temp_dir.name) / "agent.db")
         self.database.initialize("Owner")
-        self.planner = TaskPlanner(self.database, FakePlannerOllama(), ActionPolicyService(self.database))
+        self.planner = TaskPlanner(
+            self.database, FakePlannerOllama(), ActionPolicyService(self.database)
+        )
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
     def test_message_task_creates_a_confirmation_proposal(self) -> None:
-        plan = asyncio.run(self.planner.plan("owner", "Send a message to Ava about dinner at 7."))
+        plan = asyncio.run(
+            self.planner.plan("owner", "Send a message to Ava about dinner at 7.")
+        )
         self.assertEqual(plan["action_type"], "message")
         self.assertEqual(plan["proposal"]["status"], "awaiting_confirmation")
 
     def test_research_task_has_no_external_action(self) -> None:
-        plan = asyncio.run(self.planner.plan("owner", "Research quiet dinner options nearby."))
+        plan = asyncio.run(
+            self.planner.plan("owner", "Research quiet dinner options nearby.")
+        )
         self.assertIsNone(plan["action_type"])
         self.assertIsNone(plan["proposal"])
 

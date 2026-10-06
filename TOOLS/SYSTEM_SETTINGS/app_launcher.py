@@ -22,25 +22,30 @@ APPS = {
 @lru_cache(maxsize=32)
 def open_app(name: str):
     name = name.lower().strip()
+    # Allowlist: only known app keys or bare executable names (no shell -> no injection
+    # via voice input like "aura open x; rm -rf").
     # fuzzy match
     for k, path in APPS.items():
         if k in name or name in k:
             full = os.path.expandvars(path)
             if os.path.exists(full) or shutil.which(full):
-                subprocess.Popen([full] if os.path.exists(full) else [name], shell=True)
+                subprocess.Popen(
+                    [full] if os.path.exists(full) else [k], shell=False
+                )
                 return f"Opening {k}"
             else:
-                try:
-                    subprocess.Popen([name], shell=True)
-                    return f"Opening {name} via PATH"
-                except Exception as e:
-                    return f"Failed to open {k}: {e}"
-    # fallback try directly
-    try:
-        subprocess.Popen([name], shell=True)
-        return f"Opening {name}"
-    except Exception as e:
-        return f"App not found: {name} ({e})"
+                return f"Failed to open {k}: not installed"
+    # fallback: bare executable name only (letters, digits, dot, dash, underscore)
+    import re as _re
+
+    m = _re.search(r"([a-z0-9][a-z0-9._-]*\.?(?:exe)?)", name)
+    if m:
+        try:
+            subprocess.Popen([m.group(1)], shell=False)
+            return f"Opening {m.group(1)}"
+        except Exception as e:
+            return f"App not found: {m.group(1)} ({e})"
+    return f"App not found: {name}"
 
 
 if __name__ == "__main__":

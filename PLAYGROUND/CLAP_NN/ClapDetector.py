@@ -71,32 +71,40 @@ class AudioProcessor:
         """
         Records audio input and detects claps.
         """
+        temp_filename = os.path.join(self.directory, "ASSETS/temp.wav")
         with self.stream:
             print("Recording...")
-            while True:
-                chunk, overflowed = self.stream.read(self.chunk_samples)
-                self.buffer.extend(chunk)
+            try:
+                while True:
+                    chunk, overflowed = self.stream.read(self.chunk_samples)
+                    self.buffer.extend(chunk)
 
-                temp_filename = os.path.join(self.directory, "ASSETS/temp.wav")
-                self.save_buffer_to_wav(temp_filename)
+                    self.save_buffer_to_wav(temp_filename)
 
-                prediction = self.model_handler.predict(temp_filename)
-                probabilities = torch.softmax(
-                    self.model_handler.model(
-                        self.model_handler.transform_audio(temp_filename)
-                    ),
-                    dim=1,
-                )
-                predicted_prob = probabilities[0][prediction].item()
+                    prediction = self.model_handler.predict(temp_filename)
+                    probabilities = torch.softmax(
+                        self.model_handler.model(
+                            self.model_handler.transform_audio(temp_filename)
+                        ),
+                        dim=1,
+                    )
+                    predicted_prob = probabilities[0][prediction].item()
 
-                if predicted_prob > 0.99 and prediction == 1:
-                    print(f"👏 {predicted_prob * 100:.2f}%")
-                    break
-                else:
-                    print("-")
+                    if predicted_prob > 0.99 and prediction == 1:
+                        print(f"👏 {predicted_prob * 100:.2f}%")
+                        break
+                    else:
+                        print("-")
 
-                time.sleep(self.chunk_duration)
-            print("Recording finished.")
+                    time.sleep(self.chunk_duration)
+            finally:
+                print("Recording finished.")
+                if os.path.exists(temp_filename):
+                    try:
+                        os.remove(temp_filename)
+                    except Exception:
+                        pass
+                self.stream.close()
 
 
 def list_devices() -> None:

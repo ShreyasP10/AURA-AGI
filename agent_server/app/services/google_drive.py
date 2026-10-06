@@ -15,16 +15,30 @@ class GoogleDriveMirror:
     max_file_bytes = 2_000_000
     max_import_chars = 120_000
 
-    def __init__(self, settings: Settings, database: Database, vault: ProfileVault) -> None:
+    def __init__(
+        self, settings: Settings, database: Database, vault: ProfileVault
+    ) -> None:
         self.root = settings.google_drive_sync_dir
         self.database = database
         self.vault = vault
 
     def status(self) -> dict[str, Any]:
         if not self.root:
-            return {"configured": False, "ready": False, "message": "No Google Drive mirror directory is configured.", "file_count": 0}
+            return {
+                "configured": False,
+                "ready": False,
+                "message": "No Google Drive mirror directory is configured.",
+                "file_count": 0,
+            }
         ready = self.root.is_dir()
-        return {"configured": True, "ready": ready, "message": "Google Drive mirror is ready." if ready else "Configured Drive mirror directory is unavailable.", "file_count": len(self.list_files(limit=250)) if ready else 0}
+        return {
+            "configured": True,
+            "ready": ready,
+            "message": "Google Drive mirror is ready."
+            if ready
+            else "Configured Drive mirror directory is unavailable.",
+            "file_count": len(self.list_files(limit=250)) if ready else 0,
+        }
 
     def list_files(self, limit: int = 100) -> list[dict[str, Any]]:
         if not self.root or not self.root.is_dir():
@@ -43,12 +57,20 @@ class GoogleDriveMirror:
                 continue
             if size > self.max_file_bytes:
                 continue
-            records.append({"relative_path": str(resolved.relative_to(root)), "size_bytes": size, "extension": resolved.suffix.lower()})
+            records.append(
+                {
+                    "relative_path": str(resolved.relative_to(root)),
+                    "size_bytes": size,
+                    "extension": resolved.suffix.lower(),
+                }
+            )
             if len(records) >= limit:
                 break
         return records
 
-    def import_file(self, profile_id: str, relative_path: str, remember_excerpt: bool) -> dict[str, Any]:
+    def import_file(
+        self, profile_id: str, relative_path: str, remember_excerpt: bool
+    ) -> dict[str, Any]:
         if not self.database.get_profile(profile_id):
             raise ValueError("Unknown profile")
         source = self._resolve_allowed_file(relative_path)
@@ -57,13 +79,35 @@ class GoogleDriveMirror:
         except OSError as error:
             raise ValueError(f"Could not read Drive mirror file: {error}") from error
         text = text[: self.max_import_chars]
-        imported = self.vault.save_text(profile_id=profile_id, title=f"Drive import — {source.name}", content=text, category="google-drive-imports")
+        imported = self.vault.save_text(
+            profile_id=profile_id,
+            title=f"Drive import — {source.name}",
+            content=text,
+            category="google-drive-imports",
+        )
         memory = None
         if remember_excerpt:
             excerpt = " ".join(text.split())[:1200]
             if excerpt:
-                memory = self.database.create_memory(profile_id=profile_id, content=f"User explicitly imported Drive document '{source.name}': {excerpt}", category="google-drive-import", importance=2)
-        self.database.audit("google_drive_file_imported", {"relative_path": str(source.relative_to(self.root.resolve() if self.root else source.parent)), "remember_excerpt": remember_excerpt, "vault_relative_path": imported["relative_path"]}, profile_id)
+                memory = self.database.create_memory(
+                    profile_id=profile_id,
+                    content=f"User explicitly imported Drive document '{source.name}': {excerpt}",
+                    category="google-drive-import",
+                    importance=2,
+                )
+        self.database.audit(
+            "google_drive_file_imported",
+            {
+                "relative_path": str(
+                    source.relative_to(
+                        self.root.resolve() if self.root else source.parent
+                    )
+                ),
+                "remember_excerpt": remember_excerpt,
+                "vault_relative_path": imported["relative_path"],
+            },
+            profile_id,
+        )
         return {"imported": imported, "memory": memory, "source_file": source.name}
 
     def _resolve_allowed_file(self, relative_path: str) -> Path:
@@ -73,8 +117,13 @@ class GoogleDriveMirror:
         candidate = (root / relative_path).resolve()
         if not candidate.is_relative_to(root):
             raise ValueError("Requested file is outside the configured Drive mirror")
-        if not candidate.is_file() or candidate.suffix.lower() not in self.allowed_extensions:
-            raise ValueError("Only supported text documents in the configured Drive mirror can be imported")
+        if (
+            not candidate.is_file()
+            or candidate.suffix.lower() not in self.allowed_extensions
+        ):
+            raise ValueError(
+                "Only supported text documents in the configured Drive mirror can be imported"
+            )
         try:
             if candidate.stat().st_size > self.max_file_bytes:
                 raise ValueError("Drive mirror file exceeds the import size limit")

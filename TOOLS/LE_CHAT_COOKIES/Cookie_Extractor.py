@@ -41,7 +41,9 @@ def get_ory_session_cookie(
             os.environ.get("BRAVE_PATH"),
             r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
             r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
-            os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+            os.path.expandvars(
+                r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"
+            ),
         ]
         found = next((p for p in candidates if p and os.path.exists(p)), None)
         if found:

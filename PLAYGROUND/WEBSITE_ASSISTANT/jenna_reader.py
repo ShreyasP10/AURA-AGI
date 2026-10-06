@@ -16,9 +16,10 @@ def fetch_website_content(search_url: str) -> str:
     """
 
     jinna_url = "https://r.jina.ai"
-    response = requests.get(f"{jinna_url}/{search_url}").text
+    response = requests.get(f"{jinna_url}/{search_url}", timeout=30)
+    response.raise_for_status()
     print("Fetched the Website content")
-    return response
+    return response.text
 
 
 if __name__ == "__main__":

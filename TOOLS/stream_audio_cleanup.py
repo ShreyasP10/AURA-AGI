@@ -28,4 +28,5 @@ def delete_stream_audio_files(folder_path="ASSETS/STREAM_AUDIOS") -> None:
         print(f"Folder {folder_path} does not exist.")
 
 
-delete_stream_audio_files()
+if __name__ == "__main__":
+    delete_stream_audio_files()
