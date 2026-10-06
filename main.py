@@ -672,15 +672,23 @@ while True:
                 raise ValueError("empty stream")
             chat_response = chat_response.strip()
         except Exception as _e:
-            print(f"Groq stream failed {_e}, fallback HF")
+            print(f"Groq stream failed {_e}, falling back to OpenRouter...")
             try:
                 if not chat_response:
-                    chat_response = Hugging_Face_TEXT.generate(speech)
-            except Exception:
+                    chat_response = openrouter.generate(history_manager.history + [{"role": "user", "content": speech}], system_prompt=_voice_prompt, stream=False)
+            except Exception as _e2:
+                print(f"OpenRouter failed {_e2}, falling back to DeepInfra...")
                 try:
-                    chat_response = "[Groq+Hf failed, try offline whisper]"
-                except Exception:
-                    chat_response = "Sorry, my brain is offline. Check GROQ_AI key."
+                    if not chat_response:
+                        chat_response = deepInfra_TEXT.generate(history_manager.history + [{"role": "user", "content": speech}], system_prompt=_voice_prompt, stream=False)
+                except Exception as _e3:
+                    print(f"DeepInfra failed {_e3}, falling back to HuggingFace...")
+                    try:
+                        if not chat_response:
+                            chat_response = Hugging_Face_TEXT.generate(speech)
+                    except Exception as _e4:
+                        print(f"HuggingFace failed {_e4}")
+                        chat_response = "Sorry, my brain is offline. All API providers failed."
         if not chat_response or not chat_response.strip():
             chat_response = "Sorry, I didn't catch that. Could you say again?"
         # if we streamed, sentences already spoken via queue, just render panel; else speak once
