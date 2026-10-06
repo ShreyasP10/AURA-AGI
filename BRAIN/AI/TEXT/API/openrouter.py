@@ -91,22 +91,31 @@ def generate(
             "stream": True,
         }
     )
-
-    try:
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            data=payload,
-            stream=True,
-            timeout=60,
-        )
-        # Fail fast on HTTP errors (401 bad key, 429 rate-limit) with readable message
-        if response.status_code != 200:
-            return (
-                f"Failed to Get Response\nError: HTTP {response.status_code}\n"
-                f"Response: {response.text[:500]}"
+    import time
+    response = None
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                data=payload,
+                stream=True,
+                timeout=60,
             )
-        completion = ""
+            break
+        except requests.RequestException as e:
+            if attempt == 2:
+                return f"Failed to Get Response\nError: {e}"
+            time.sleep(1.0 * (2 ** attempt))
+
+    # Fail fast on HTTP errors (401 bad key, 429 rate-limit) with readable message
+    if response.status_code != 200:
+        return (
+            f"Failed to Get Response\nError: HTTP {response.status_code}\n"
+            f"Response: {response.text[:500]}"
+        )
+    completion = ""
+    try:
         for line in response.iter_lines(decode_unicode=True, chunk_size=1):
             if line:
                 modified_value: str = re.sub("data:", "", line)
@@ -128,6 +137,7 @@ def generate(
         return completion
     except requests.RequestException as e:
         return f"Failed to Get Response\nError: {e}\nResponse: {response.text}"
+
 
 
 if __name__ == "__main__":

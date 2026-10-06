@@ -67,30 +67,34 @@ def generate(
     # Honor Groq-style model ids; fall back to default otherwise
     use_model = model if isinstance(model, str) and "/" not in model and "-" in model else _DEFAULT_MODEL
 
-    try:
-        client = Groq(api_key=os.environ.get("GROQ_AI"), timeout=30)
-        chat_completion = client.chat.completions.create(
-            messages=messages,
-            model=use_model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=stream,
-        )
+    import time
+    for attempt in range(3):
+        try:
+            client = Groq(api_key=os.environ.get("GROQ_AI"), timeout=30)
+            chat_completion = client.chat.completions.create(
+                messages=messages,
+                model=use_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=stream,
+            )
 
-        full_response = ""
-        if stream:
-            for chunk in chat_completion:
-                delta = chunk.choices[0].delta.content or ""
-                print(delta, end="", flush=True)
-                full_response += delta
-        else:
-            full_response = chat_completion.choices[0].message.content
+            full_response = ""
+            if stream:
+                for chunk in chat_completion:
+                    delta = chunk.choices[0].delta.content or ""
+                    print(delta, end="", flush=True)
+                    full_response += delta
+            else:
+                full_response = chat_completion.choices[0].message.content
 
-        return full_response.strip()
+            return full_response.strip()
 
-    except Exception as e:
-        print(f"Error occurred during Groq fallback API request: {e}")
-        return None
+        except Exception as e:
+            if attempt == 2:
+                print(f"Error occurred during Groq fallback API request after 3 retries: {e}")
+                return None
+            time.sleep(1.0 * (2 ** attempt))
 
 
 if __name__ == "__main__":
