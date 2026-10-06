@@ -336,8 +336,16 @@ AURA is local-first:
 
 ---
 
-## What's New (v1.1)
+## What's New (v1.2 & v1.1)
 
+**v1.2 Updates:**
+- **Configuration Wizard:** Added `configure.py` for a smooth, interactive setup of API keys and preferences.
+- **One-Click Installers:** `install.ps1` and `install.sh` scripts for fully automated setup of environments and dependencies.
+- **Bulletproof Fallback Chains:** Added exponential backoff retry loops for LLMs, and a deep fallback cascade (`Groq -> OpenRouter -> DeepInfra -> HF`) in the main loop to ensure the assistant never crashes during API outages.
+- **Vosk Default STT:** Automatically defaults to the much faster Vosk local STT backend if the model is detected, bypassing browser Selenium fragility.
+- **Docker Security:** Added a comprehensive `.dockerignore` to secure API keys and prevent cache bloat.
+
+**v1.1 Updates:**
 - **TTS Concurrency Engine:** Fixed overlapping and repeating audio bugs in `edge_tts`. Sentences are now correctly queued with unique file IDs and a global playback lock, ensuring smooth, uninterrupted streaming voice.
 - **Intent Classifier Overhaul:** Rewritten the core intent classifiers (`BISECTORS`) to use the lightning-fast Groq API (`llama-3.1-8b-instant`), bypassing DeepInfra's new web security locks. This fully restores **System Controls** (theme/taskbar) and **Image Generation**.
 - **AURA Persona Upgrade:** Replaced the amnesiac/confused persona with a highly intelligent, helpful AI assistant (`human_response_v3_AVA`). AURA will now properly explain complex topics like CNNs instead of refusing.
