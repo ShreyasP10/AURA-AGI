@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+__pycache__
+*.pyc
+*.pyo
+*.log
+ASSETS/Vosk
+ASSETS/porcupine/*.ppn
+.venv
+venv
+.idea
+.vscode
+node_modules
+codebase.md
+AURA_AGI_Audit_Report.md
