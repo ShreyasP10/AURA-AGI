@@ -1,4 +1,5 @@
 const $ = (selector) => document.querySelector(selector);
+let apiToken = "";
 const state = {
   activeProfile: "owner",
   speakingReplies: false,

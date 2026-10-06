@@ -167,8 +167,13 @@ def _stop_speaking():
     except Exception:
         pass
 
-
 _STOP_WORDS = (
+    "stop",
+    "stop speaking",
+    "quiet",
+    "enough",
+    "cancel",
+    "shut up",
     "aura stop",
     "aura stop speaking",
     "aura quiet",
@@ -509,9 +514,7 @@ while True:
                 _speak_fast("Image generation failed")
             continue
 
-        elif all(x in _cls_res for x in ("vision", "website", "call", "youtube")):
-            print("\033[91mConfused with Classification. Using Default Response\033[0m")
-            _speak_fast(_def_res)
+
 
         elif "system control" in _cls_res:
             _speak_fast("Sure Sir. Setting the Required Settings")

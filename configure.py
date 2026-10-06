@@ -39,6 +39,11 @@ def main():
         elif current:
             env_data[key] = current
 
+    import secrets
+    if "API_SECRET" not in env_data or not env_data["API_SECRET"]:
+        env_data["API_SECRET"] = secrets.token_hex(32)
+        print(colored("\n[i] Generated new API_SECRET for the Kiosk server.", "1;32"))
+
     # Core Keys
     prompt_key("GROQ_AI", "Groq API Key (Required for fast text generation)")
     prompt_key("OPENROUTER", "OpenRouter API Key (Fallback and main chat provider)")

@@ -54,8 +54,8 @@ else
 fi
 
 if [ ! -f "agent_server/.env.agent" ]; then
-    if [ -f "agent_server/.env.agent.example" ]; then
-        cp agent_server/.env.agent.example agent_server/.env.agent
+    if [ -f ".env.agent.example" ]; then
+        cp .env.agent.example agent_server/.env.agent
         echo -e "\033[1;32mCreated agent_server/.env.agent from template.\033[0m"
     fi
 fi

@@ -51,8 +51,8 @@ if (-Not (Test-Path -Path ".env")) {
 }
 
 if (-Not (Test-Path -Path "agent_server\.env.agent")) {
-    if (Test-Path -Path "agent_server\.env.agent.example") {
-        Copy-Item -Path "agent_server\.env.agent.example" -Destination "agent_server\.env.agent"
+    if (Test-Path -Path ".env.agent.example") {
+        Copy-Item -Path ".env.agent.example" -Destination "agent_server\.env.agent"
         Write-Host "Created agent_server\.env.agent from template." -ForegroundColor Green
     }
 }
