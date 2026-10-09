@@ -26,7 +26,7 @@ def generate(
 
     payload = {"messages": conversation_history}
 
-    response = requests.post(url, json=payload, stream=True)
+    response = requests.post(url, json=payload, stream=True, timeout=15)
     complete_response = ""
 
     for chunk in response.iter_content(decode_unicode=True, chunk_size=1):

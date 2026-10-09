@@ -28,8 +28,8 @@ def speak(
     """
     try:
         os.remove(filename)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[error {__file__}] {type(e).__name__}: {e}")
 
     url = "https://audio.api.speechify.com/generateAudioFiles"
     payload = {

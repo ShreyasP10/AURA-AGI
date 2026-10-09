@@ -73,8 +73,8 @@ class SpeechToTextListener:
         _profile = os.path.join(tempfile.gettempdir(), f"aura-{browser}-profile")
         try:
             os.makedirs(_profile, exist_ok=True)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
         self.chrome_options.add_argument(f"--user-data-dir={_profile}")
         self.chrome_options.add_argument("--no-default-browser-check")
         self.chrome_options.add_argument("--no-first-run")
@@ -169,8 +169,8 @@ class SpeechToTextListener:
             el = self.driver.find_element(By.ID, "is_recording")
             if el.text.startswith("Recording: True"):
                 print("\nSTT warning: stop_recording() called but mic remains active!")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
     def start_recording(self):
         """Forces the recording to start/resume via javascript."""
@@ -178,8 +178,8 @@ class SpeechToTextListener:
             self.driver.execute_script(
                 "try { window.aura_speech_flag = true; window.aura_recognition.start(); document.getElementById('is_recording').innerHTML = 'Recording: True'; } catch(e){}"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
     def get_text(self) -> str:
         """Retrieves the transcribed text from the website."""
@@ -234,15 +234,15 @@ class SpeechToTextListener:
         # Select the language using JavaScript
         try:
             self.select_language()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
         # Verify the language selection (non-fatal)
         try:
             if not self.verify_language_selection():
                 print("\nSTT warn: language select failed, continuing anyway")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
         try:
             self.driver.find_element(By.ID, "click_to_record").click()
@@ -297,8 +297,8 @@ class SpeechToTextListener:
         """Quit and recreate the webdriver (Brave crash recovery)."""
         try:
             self.driver.quit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
         import time as _t
 
         _t.sleep(1.0)

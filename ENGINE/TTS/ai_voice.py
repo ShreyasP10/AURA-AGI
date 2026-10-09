@@ -47,8 +47,8 @@ def get_proxies(
             if check_resp.status_code == 200:
                 working_proxies.append(proxy)
                 # print(f"{proxy} is working")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
             # print(f"Error checking {proxy}: {e}")
 
     if prints:
@@ -154,8 +154,8 @@ def generate_tts_url(
                         response_received = True
                         # Set the event to indicate a response has been received
                         response_event.set()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
         # print(f"Error with proxy {proxy}: {e}")
 
     # To randomly take out five elements from the list of proxies

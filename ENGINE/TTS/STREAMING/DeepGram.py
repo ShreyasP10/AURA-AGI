@@ -45,7 +45,7 @@ class SpeechSynthesizer:
         """
         api_endpoint = "https://deepgram.com/api/ttsAudioGeneration"
         request_payload = {"text": text, "model": voice_model}
-        api_response = requests.post(api_endpoint, json=request_payload)
+        api_response = requests.post(api_endpoint, json=request_payload, timeout=15)
         api_response.raise_for_status()  # Raise an exception for unsuccessful API requests
 
         # Create the directory if it doesn't exist

@@ -46,7 +46,7 @@ def generate(
     }
 
     payload = {"text": user_query, "conversation": conversation_id}
-    response = requests.post(API_ENDPOINT, json=payload, headers=headers, stream=True)
+    response = requests.post(API_ENDPOINT, json=payload, headers=headers, stream=True, timeout=15)
 
     if response.status_code in (401, 403):
         print("Assuming the Cookie is Expired.... Generating New Cookie.....")

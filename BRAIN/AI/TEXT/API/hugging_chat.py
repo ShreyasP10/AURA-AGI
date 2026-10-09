@@ -41,7 +41,7 @@ class HuggingChat_RE:
 
         url = "https://huggingface.co/chat/conversation"
         payload = {"model": self.model}
-        response = requests.post(url, json=payload, headers=self.headers).json()
+        response = requests.post(url, json=payload, headers=self.headers, timeout=15).json()
         print(
             "\033[92m" + "Initialised Conversation ID:",
             response["conversationId"] + "\033[0m",
@@ -57,7 +57,7 @@ class HuggingChat_RE:
         """
 
         url = f"https://huggingface.co/chat/conversation/{self.conversationId}/__data.json?x-sveltekit-invalidated=11"
-        response = requests.get(url, headers=self.headers).json()
+        response = requests.get(url, headers=self.headers, timeout=15).json()
         print(
             "\033[92m" + "Initialised Message ID:",
             response["nodes"][1]["data"][3] + "\033[0m",
@@ -90,7 +90,7 @@ class HuggingChat_RE:
             "files": files,
         }
 
-        response = requests.post(url, json=payload, headers=self.headers, stream=True)
+        response = requests.post(url, json=payload, headers=self.headers, stream=True, timeout=15)
         complete_response = ""
         for chunk in response.iter_content(chunk_size=1024):
             if chunk:

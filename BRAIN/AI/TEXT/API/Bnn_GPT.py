@@ -29,31 +29,37 @@ def generate_query(
         The function returns the complete response from the server.
     """
 
-    # Define the headers
+    # Define the headers (boundary is an arbitrary separator; must match payload.
+    # Per RFC 2046 the header carries the raw boundary while each delimiter
+    # line prepends "--".)
+    _BOUNDARY = "----WebKitFormBoundaryAURA"
+    _DELIM = f"--{_BOUNDARY}"
     request_headers = {
         "Accept": "text/x-component",
         "Accept-Encoding": "gzip, deflate, br, zstd",
         "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
-        "Content-Type": "multipart/form-data; boundary=----WebKitFormBoundarycDuq4Qbo8Y2u0is9",
+        "Content-Type": f"multipart/form-data; boundary={_BOUNDARY}",
         "Next-Action": os.environ.get("BNN_GPT_ACTION_ID"),
     }
 
     # Define the payload
+    # NOTE: IDs below are bnngpt.com's public Next.js Flight protocol constants
+    # (identical for every visitor, scraped from their frontend JS) — not secrets.
     payload = (
-        "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
+        f"{_DELIM}\r\n"
         'Content-Disposition: form-data; name="1"\r\n\r\n'
-        '{"id":"6399a7e212fa477d1a783edade27c8354a64e1ab","bound":null}\r\n'
-        "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
+        '{"id":"6399a7e212fa477d1a783edade27c8354a64e1ab","bound":null}\r\n'  # pragma: allowlist secret
+        f"{_DELIM}\r\n"
         'Content-Disposition: form-data; name="2"\r\n\r\n'
-        '{"id":"9eed8f3e1c51044505fd5c0d73e8d2a92572691c","bound":null}\r\n'
-        "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
+        '{"id":"9eed8f3e1c51044505fd5c0d73e8d2a92572691c","bound":null}\r\n'  # pragma: allowlist secret
+        f"{_DELIM}\r\n"
         'Content-Disposition: form-data; name="3_input"\r\n\r\n'
         f"{query}\r\n"
-        "------WebKitFormBoundarycDuq4Qbo8Y2u0is9\r\n"
+        f"{_DELIM}\r\n"
         'Content-Disposition: form-data; name="0"\r\n\r\n'
         '[{"action":"$F1","options":{"onSetAIState":"$F2"}},'
         '{"chatId":"AURA-Team","messages":[]},"$K3","gpt-4o"]\r\n'
-        "------WebKitFormBoundarycDuq4Qbo8Y2u0is9--"
+        f"{_DELIM}--"
     )
 
     # Initialize variables
@@ -61,7 +67,7 @@ def generate_query(
     complete_response = ""
 
     # Send the POST request
-    response = requests.post(url, headers=request_headers, data=payload, stream=True)
+    response = requests.post(url, headers=request_headers, data=payload, stream=True, timeout=15)
 
     # Process the response stream
     for chunk in response.iter_lines(decode_unicode=True, chunk_size=1):

@@ -68,8 +68,8 @@ class ConversationHistoryManager:
             _words = sum(len(e.get("content", "").split()) for e in data)
             while _words > _limit and len(data) > 2:
                 _words -= len(data.pop(0).get("content", "").split())
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
         with open(self.conversation_file, "w") as file:
             json.dump(data, file, indent=4)

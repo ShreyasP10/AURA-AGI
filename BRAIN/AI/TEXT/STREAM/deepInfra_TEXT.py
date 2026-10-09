@@ -86,7 +86,7 @@ def _stream_response(api_url, headers, payload, chunk_size):
     """Streams the response from the API and yields sentences."""
     partial_sentence = ""
     try:
-        response = requests.post(api_url, headers=headers, json=payload, stream=True)
+        response = requests.post(api_url, headers=headers, json=payload, stream=True, timeout=15)
         for value in response.iter_lines(decode_unicode=True, chunk_size=chunk_size):
             modified_value = re.sub("data:", "", value)
             if modified_value and "[DONE]" not in modified_value:
@@ -124,7 +124,7 @@ def _stream_response(api_url, headers, payload, chunk_size):
 def _get_full_response(api_url, headers, payload):
     """Retrieves the full response from the API."""
     try:
-        response = requests.post(api_url, headers=headers, json=payload)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=15)
         response.raise_for_status()  # Check for HTTP errors
         return response.json()["choices"][0]["message"]["content"]
     except requests.exceptions.RequestException as e:

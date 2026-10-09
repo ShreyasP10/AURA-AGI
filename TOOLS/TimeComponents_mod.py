@@ -303,8 +303,8 @@ def extract_time_components_mod(
         am_pm = "am" if hour < 12 else "pm"
         date = datetime_parsed.date()
         return hour, minute, am_pm, date, alarm_timer
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[error {__file__}] {type(e).__name__}: {e}")
 
     # If no time is found, default to current time
     return None, None, None, date, alarm_timer

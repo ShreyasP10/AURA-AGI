@@ -104,7 +104,7 @@ def generate(
     }
 
     # Make the POST request
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload, timeout=15)
 
     # Check the response
     if response.status_code == 200:

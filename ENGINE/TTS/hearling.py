@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 import aiofiles
 import os
-import random
+import secrets
 import urllib.request
 import concurrent.futures
 
@@ -40,7 +40,7 @@ class Async_HearlingAudioGenerator:
         Returns:
             str: The authentication token for the newly created account.
         """
-        email = f"{self.email_prefix}{random.randint(1, 99999)}@gmail.com"
+        email = f"{self.email_prefix}{secrets.randbelow(99999) + 1}@gmail.com"
         headers = {
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36"
         }
@@ -162,7 +162,7 @@ class HearlingAudioGenerator:
         Returns:
             str: The authentication token for the newly created account.
         """
-        email = f"{self.email_prefix}{random.randint(10000, 99999)}@gmail.com"
+        email = f"{self.email_prefix}{secrets.randbelow(90000) + 10000}@gmail.com"
         payload = {"email": email, "password": "AURA-Team"}
         response = self.session.post(self.url_accounts, json=payload)
         response.raise_for_status()
@@ -242,7 +242,7 @@ class Partial_Async_HearlingAudioGenerator:
         Returns:
             str: The authentication token for the newly created account.
         """
-        email = f"{self.email_prefix}{random.randint(10000, 99999)}@gmail.com"
+        email = f"{self.email_prefix}{secrets.randbelow(90000) + 10000}@gmail.com"
         payload = {"email": email, "password": "AURA-Team"}
         response = self.session.post(self.url_accounts, json=payload)
         response.raise_for_status()

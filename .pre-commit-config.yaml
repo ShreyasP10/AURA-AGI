@@ -1,0 +1,24 @@
+# Install once: pip install pre-commit detect-secrets
+# Then: pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: ^(tempcode\.txt|textcoe\.txt|codetext\.md)$
+  - repo: local
+    hooks:
+      - id: py-compile-check
+        name: python compile check
+        entry: python -m py_compile
+        types: [python]
+        pass_filenames: true

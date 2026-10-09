@@ -110,8 +110,8 @@ def speak(
         try:
             if os.path.exists(mp3_file):
                 os.remove(mp3_file)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
         try:
             return asyncio.run(_run())
         except Exception as e:
@@ -170,8 +170,8 @@ def speak(
         if os.path.exists(subtitle_file):
             try:
                 os.remove(subtitle_file)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[error {__file__}] {type(e).__name__}: {e}")
         return
 
     # Use a global lock so sentences don't talk over each other
@@ -202,8 +202,8 @@ def speak(
                 os.remove(subtitle_file)
             if os.path.exists(mp3_file):
                 os.remove(mp3_file)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":

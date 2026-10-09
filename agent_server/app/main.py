@@ -75,7 +75,15 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    version="0.1.0",
+    lifespan=lifespan,
+    # Interactive explorer off by default (attack surface); AURA_DOCS=1 re-enables locally
+    docs_url="/docs" if os.environ.get("AURA_DOCS", "0") == "1" else None,
+    redoc_url="/redoc" if os.environ.get("AURA_DOCS", "0") == "1" else None,
+    openapi_url="/openapi.json" if os.environ.get("AURA_DOCS", "0") == "1" else None,
+)
 
 if settings.public_origin:
     app.add_middleware(
