@@ -32,7 +32,7 @@ def generate(
 
     request_data = {"messages": conversation_history}
 
-    api_response = requests.post(api_endpoint, json=request_data, stream=True)
+    api_response = requests.post(api_endpoint, json=request_data, stream=True, timeout=15)
     partial_sentence = ""
 
     for data_chunk in api_response.iter_content(decode_unicode=True, chunk_size=1):

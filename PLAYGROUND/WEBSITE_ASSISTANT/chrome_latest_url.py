@@ -18,8 +18,10 @@ def _read_latest_url(history_path: str, copy_name: str, label: str) -> str:
     except Exception as e:
         raise RuntimeError(f"Cannot copy locked {label} History (close browser): {e}")
 
+    conn = None
     try:
-        # Connect to the history database
+        # Connect to the history database (closed explicitly in finally:
+        # sqlite3's context manager only commits, it does NOT close)
         conn = sqlite3.connect(history_db_path)
         cursor = conn.cursor()
 
@@ -29,17 +31,27 @@ def _read_latest_url(history_path: str, copy_name: str, label: str) -> str:
         if not row:
             raise ValueError(f"No URLs in {label} history")
 
-        # Close the connection
-        conn.close()
-
         print("Latest URL:", row[0])
         return row[0]
     finally:
-        try:
-            if os.path.exists(history_db_path):
-                os.remove(history_db_path)
-        except Exception:
-            pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception as e:
+                print(f"[error {__file__}] {type(e).__name__}: {e}")
+        # Windows holds file locks briefly (SQLite/AV) — retry removal
+        import time as _time
+
+        for _attempt in range(5):
+            try:
+                if os.path.exists(history_db_path):
+                    os.remove(history_db_path)
+                break
+            except Exception as e:
+                if _attempt == 4:
+                    print(f"[error {__file__}] {type(e).__name__}: {e}")
+                else:
+                    _time.sleep(0.2)
 
 
 def get_latest_brave_url() -> str:

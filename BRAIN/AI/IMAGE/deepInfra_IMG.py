@@ -46,7 +46,7 @@ def generate(
         }
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload, timeout=15)
 
     try:
         data = response.json()["output"]

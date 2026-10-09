@@ -109,12 +109,12 @@ try:
             try:
                 stream.stop_stream()
                 stream.close()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[error {__file__}] {type(e).__name__}: {e}")
             try:
                 pa.terminate()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[error {__file__}] {type(e).__name__}: {e}")
         if not frames or voiced * chunk_s < min_voiced_s:
             return ""
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -129,8 +129,8 @@ try:
             finally:
                 try:
                     os.remove(f.name)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[error {__file__}] {type(e).__name__}: {e}")
 except ImportError:
 
     def transcribe_file(*a, **k):

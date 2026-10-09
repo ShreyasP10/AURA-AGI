@@ -42,8 +42,8 @@ class SpeechSynthesizer:
         """
         try:
             os.remove(output_filename)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
         url = "https://audio.api.speechify.com/generateAudioFiles"
         payload = {

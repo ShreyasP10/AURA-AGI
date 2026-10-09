@@ -365,7 +365,7 @@ def generate(
     }
 
     # Send the POST request and stream the response
-    response = requests.post(api_endpoint, headers=headers, json=payload, stream=True)
+    response = requests.post(api_endpoint, headers=headers, json=payload, stream=True, timeout=15)
     complete_response, printed_length, initial_responses_to_ignore = "", 0, 2
 
     for line in response.iter_lines(decode_unicode=True, chunk_size=1):

@@ -88,15 +88,15 @@ def speech_to_text(
                             end="",
                             flush=True,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[error {__file__}] {type(e).__name__}: {e}")
     finally:
         try:
             stream.stop_stream()
             stream.close()
             audio.terminate()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":

@@ -152,7 +152,7 @@ if __name__ == "__main__":
 #         ],
 #         "stream": False
 #     }
-#     response = requests.post(api_url, headers=headers, json=payload)
+#     response = requests.post(api_url, headers=headers, json=payload, timeout=15)
 #     return response.json()['choices'][0]['message']['content']
 
 

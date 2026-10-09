@@ -40,7 +40,8 @@ def load_tasks():
     if not os.path.exists(TASK_PATH):
         return []
     try:
-        return json.load(open(TASK_PATH))
+        with open(TASK_PATH) as _f:
+            return json.load(_f)
     except Exception:
         return []
 
@@ -49,7 +50,22 @@ def save_tasks(tasks):
     # auto-sort high->low
     order = {"high": 0, "medium": 1, "low": 2, "none": 3}
     tasks.sort(key=lambda x: order.get(x.get("priority", "none"), 3))
-    json.dump(tasks, open(TASK_PATH, "w"), indent=2)
+    # Atomic write: crash mid-save no longer truncates the task file
+    import os as _os
+    import tempfile as _tf
+
+    _dir = _os.path.dirname(TASK_PATH) or "."
+    _fd, _tmp = _tf.mkstemp(dir=_dir, suffix=".tmp")
+    try:
+        with _os.fdopen(_fd, "w") as _f:
+            json.dump(tasks, _f, indent=2)
+        _os.replace(_tmp, TASK_PATH)
+    except Exception:
+        try:
+            _os.remove(_tmp)
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
+        raise
 
 
 def list_tasks(filter_tag=None, search=None):

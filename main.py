@@ -99,8 +99,8 @@ def _tts_worker():
                 if not _stop_tts.is_set():
                     try:
                         listener.stop_recording()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[error {__file__}] {type(e).__name__}: {e}")
                     speak(_txt)
             except Exception as _e:
                 print(f"TTS worker fail: {_e}")
@@ -109,11 +109,11 @@ def _tts_worker():
                     # only restart mic if queue is empty, so we don't start/stop rapidly
                     if _tts_queue.empty():
                         listener.start_recording()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[error {__file__}] {type(e).__name__}: {e}")
                 _tts_queue.task_done()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
 
 
 _threading.Thread(target=_tts_worker, daemon=True).start()
@@ -127,8 +127,8 @@ def _speak_fast(text: str):
         return
     try:
         _tts_queue.put_nowait(text.strip())
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[error {__file__}] {type(e).__name__}: {e}")
 
 
 def _stop_speaking():
@@ -136,8 +136,8 @@ def _stop_speaking():
     _stop_tts.set()
     try:
         listener.stop_recording()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[error {__file__}] {type(e).__name__}: {e}")
     try:
         while not _tts_queue.empty():
             try:
@@ -151,21 +151,21 @@ def _stop_speaking():
                     pass  # counter already balanced; never crash stop
             except Exception:
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[error {__file__}] {type(e).__name__}: {e}")
     try:
         import pygame
 
         try:
             pygame.mixer.music.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
         try:
             pygame.mixer.quit()
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")
+    except Exception as e:
+        print(f"[error {__file__}] {type(e).__name__}: {e}")
 
 _STOP_WORDS = (
     "stop",
@@ -269,7 +269,7 @@ def _ui_print_ai(text: str):
     if _USE_RICH and _console:
         try:
             _console.print(
-                _Panel(_Markdown(text), title="AURA", border_style="cyan", expand=False)
+                _Panel(_Markdown(text), title="[bold magenta]AURA[/bold magenta]", border_style="cyan", expand=False)
             )
             return
         except BaseException:
@@ -280,7 +280,7 @@ def _ui_print_ai(text: str):
 def _ui_print_sys(text: str):
     if _USE_RICH and _console:
         try:
-            _console.print(f"[dim]{text}[/dim]")
+            _console.print(text)
             return
         except BaseException:
             pass
@@ -290,7 +290,7 @@ def _ui_print_sys(text: str):
 def _get_input_hybrid() -> str | None:
     """Each turn: type directly, or press Enter empty / type '/voice' for mic. Voice timeout falls back to typing."""
     _mode = os.environ.get("AURA_TEXT_MODE", "0")
-    _prompt = "YOU (type, Enter=voice, /voice=mic, /quit=exit)"
+    _prompt = "YOU"
     if _mode == "1":
         try:
             if _USE_RICH and _console:
@@ -317,16 +317,16 @@ def _get_input_hybrid() -> str | None:
         return typed
     # voice path
     try:
-        _ui_print_sys("🎤 Listening... (speak now, 45s max, Ctrl+C for typing)")
+        _ui_print_sys("[bold yellow]🎙️ Listening...[/bold yellow] [dim](speak now, 45s max, Ctrl+C for typing)[/dim]")
         speech = listener.listen(timeout_s=45)
         if speech and speech.strip():
-            _ui_print_sys(f"YOU SAID: {speech.strip()}")
+            _ui_print_sys(f"[bold green]YOU SAID:[/bold green] {speech.strip()}")
             return speech.strip()
-        _ui_print_sys("No speech heard — type instead.")
+        _ui_print_sys("[dim]No speech heard — type instead.[/dim]")
     except KeyboardInterrupt:
-        _ui_print_sys("Mic cancelled — type instead.")
+        _ui_print_sys("[dim]Mic cancelled — type instead.[/dim]")
     except Exception as e:
-        _ui_print_sys(f"STT failed ({type(e).__name__}: {str(e)[:200]}). Type instead.")
+        _ui_print_sys(f"[bold red]STT failed ({type(e).__name__})[/bold red] [dim]Type instead.[/dim]")
     try:
         if _USE_RICH and _console:
             return (
@@ -339,10 +339,18 @@ def _get_input_hybrid() -> str | None:
 
 
 if _USE_RICH and _console:
+    # Never clear the user's scrollback unannounced (destroys prior errors);
+    # opt in explicitly with AURA_CLEAR=1.
+    if os.environ.get("AURA_CLEAR", "0") == "1":
+        import os as _os
+
+        _os.system("cls" if _os.name == "nt" else "clear")
     _console.print(
         _Panel.fit(
-            "AURA-AGI — voice + text. Type, or Enter for mic. `stop` halts speech.",
-            title="AURA ready",
+            "[bold cyan]AURA-AGI Autonomous Assistant[/bold cyan]\n"
+            "[dim]Type your message, or press Enter to use the microphone.\n"
+            "Type [bold red]/quit[/bold red] to exit. Say or type [bold red]stop[/bold red] to halt speech.[/dim]",
+            title="[bold green]System Ready[/bold green]",
             border_style="green",
         )
     )
@@ -353,14 +361,14 @@ else:
 while True:
     speech = _get_input_hybrid()
     if speech is None:
-        _ui_print_sys("Bye!")
+        _ui_print_sys("[bold magenta]Goodbye![/bold magenta]")
         break
 
     low = speech.lower().strip()
     # STOP: interrupt immediately, no LLM call — works with/without wakeword
     if low in _STOP_WORDS:
         _stop_speaking()
-        print("Stopped.")
+        _ui_print_sys("[bold red]🛑 Stopped.[/bold red]")
         continue
     is_wake = low.startswith("aura") or low.endswith("aura")
     if is_wake:
@@ -368,11 +376,11 @@ while True:
             speech = speech[len("aura") :].strip()
         elif low.endswith("aura"):
             speech = speech[: -len("aura")].strip()
-        print("Updated Speech:", speech)
+        _ui_print_sys(f"[dim]Parsed intent: {speech}[/dim]")
         # stop after wake strip too: "aura stop speaking"
         if speech.lower().strip() in _STOP_WORDS:
             _stop_speaking()
-            print("Stopped.")
+            _ui_print_sys("[bold red]🛑 Stopped.[/bold red]")
             continue
         # --- Optimized fast local intents (zero LLM cost, <10ms) ---
         low2 = speech.lower()
@@ -383,8 +391,8 @@ while True:
                 _speak_fast(_fast)
                 try:
                     history_manager.update_file(speech, _fast)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[error {__file__}] {type(e).__name__}: {e}")
                 continue
         # cache lower check once
         if low2.startswith("open ") or (
@@ -403,7 +411,7 @@ while True:
         ):
             try:
                 res = open_app(speech)
-                print("AppLauncher>>", res)
+                _ui_print_sys(f"[bold blue]AppLauncher ⚡[/bold blue] {res}")
                 _speak_fast(res)
                 continue
             except Exception as e:
@@ -411,7 +419,7 @@ while True:
         if low2.startswith("find ") or "find file" in low2 or "search file" in low2:
             try:
                 res = find_and_summarize(speech)
-                print("FileFinder>>", res)
+                _ui_print_sys(f"[bold blue]FileFinder ⚡[/bold blue] {res}")
                 _speak_fast(res[:300])
                 continue
             except Exception as e:
@@ -437,7 +445,7 @@ while True:
                 else:
                     t = add_task(speech)
                     res = f"Task added: {t['text']}"
-                print("TaskBoard>>", res)
+                _ui_print_sys(f"[bold blue]TaskBoard ⚡[/bold blue] {res}")
                 _speak_fast(res)
                 continue
             except Exception as e:
@@ -445,7 +453,7 @@ while True:
         if any(k in low2 for k in ["read text", "ocr"]):
             try:
                 res = ocr_vision_live(speech)
-                print("OCR>>", res[:80])
+                _ui_print_sys(f"[bold blue]OCR ⚡[/bold blue] {res[:80]}")
                 _speak_fast(res[:400])
                 continue
             except Exception as e:
@@ -453,7 +461,7 @@ while True:
         if any(k in low2 for k in ["on my screen", "screen see"]):
             try:
                 res = see_screen(speech)
-                print("ScreenSee>>", res[:80])
+                _ui_print_sys(f"[bold blue]ScreenSee ⚡[/bold blue] {res[:80]}")
                 _speak_fast(res[:400])
                 continue
             except Exception as e:
@@ -507,7 +515,7 @@ while True:
             _speak_fast("Sure Sir, Generating Your Image")
             try:
                 ok, msg = decohere_ai.generate(speech)
-                print("Image>>", ok, msg)
+                _ui_print_sys(f"[bold blue]ImageGen ⚡[/bold blue] {ok} - {msg}")
                 _speak_fast("Image ready" if ok else f"Image failed: {msg}")
             except Exception as e:
                 print(f"Image fail {e}")
@@ -546,7 +554,7 @@ while True:
                     system_prompt=INSTRUCTIONS.vison_realtime_v1,
                     image_path=image_path,
                 )
-                print("AI>>", response_vision)
+                _ui_print_ai(response_vision)
                 _speak_fast(response_vision)
             except Exception as e:
                 print(f"Vision fail {e}")
@@ -555,8 +563,8 @@ while True:
                 try:
                     if image_path and os.path.exists(image_path):
                         os.remove(image_path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[error {__file__}] {type(e).__name__}: {e}")
 
         elif "call" in _cls_res:
             _speak_fast("Sure Sir. Calling")
@@ -567,6 +575,8 @@ while True:
                 site_markdown = jenna_reader.fetch_website_content(
                     chrome_latest_url.get_latest_chrome_url()
                 )
+                # Bound input: full pages can be 100KB+ (token blowup/cost)
+                site_markdown = (site_markdown or "")[:6000]
                 response = openrouter.generate(
                     f"METEDATA: {site_markdown}\n\nQUERY: {speech}",
                     system_prompt="Keep you responses very short and concise",
@@ -578,14 +588,14 @@ while True:
 
         else:
             # taskExecutor.process_query(speech)
-            print("AI>>", _def_res)
+            _ui_print_ai(_def_res)
             _speak_fast(_def_res)
 
     else:
         history_manager.store_history(
             history_manager.history + [{"role": "user", "content": speech}]
         )
-        print("\033[93mHuman >> {}\033[0m".format(speech))
+        
 
         # chat_response = Phind.generate(history_manager.history, system_prompt=INSTRUCTIONS.hindi_only_system_prompt_v3, stream=True)
         # chat_response = Phind.generate(history_manager.history, system_prompt=INSTRUCTIONS.human_response_v3_AVA, stream=True)
@@ -605,13 +615,13 @@ while True:
         if len(speech) >= 15:
             try:
                 emo = detect_emotion(speech)
-            except Exception:
-                pass  # fixed bare except -> specific
+            except Exception as e:
+                print(f"[error {__file__}] {type(e).__name__}: {e}")  # fixed bare except -> specific
         base_prompt = INSTRUCTIONS.human_response_v3_AVA
         try:
             base_prompt = adapt_prompt(base_prompt, emo)
-        except Exception:
-            pass  # fixed bare except -> specific
+        except Exception as e:
+            print(f"[error {__file__}] {type(e).__name__}: {e}")  # fixed bare except -> specific
         if emo != "neutral":
             print(f"Emotion: {emo} -> adapted prompt")
         # STREAMING: Groq stream -> speak sentence-wise (was 2.1s wait -> 0.4s first word)
@@ -658,19 +668,19 @@ while True:
                     or _timed_out
                 ) and len(buffer.strip()) > 3:
                     if first:
-                        _ui_print_sys(f"AURA (stream) >> {buffer.strip()}")
+                        _ui_print_sys(f"[bold cyan]AURA (stream) >>[/bold cyan] {buffer.strip()}")
                         first = False
                     try:
                         _speak_fast(buffer.strip())
-                    except Exception:
-                        pass  # fixed bare except -> specific
+                    except Exception as e:
+                        print(f"[error {__file__}] {type(e).__name__}: {e}")  # fixed bare except -> specific
                     buffer = ""
                     _last_flush = _time.time()
             if buffer.strip():
                 try:
                     _speak_fast(buffer.strip())
-                except Exception:
-                    pass  # fixed bare except -> specific
+                except Exception as e:
+                    print(f"[error {__file__}] {type(e).__name__}: {e}")  # fixed bare except -> specific
             if not chat_response:
                 raise ValueError("empty stream")
             chat_response = chat_response.strip()

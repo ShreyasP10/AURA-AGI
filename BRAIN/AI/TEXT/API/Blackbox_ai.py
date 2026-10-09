@@ -36,7 +36,7 @@ def generate(
     if web_access:
         payload["codeModelMode"] = web_access
 
-    response = requests.post(chat_endpoint, json=payload, stream=True)
+    response = requests.post(chat_endpoint, json=payload, stream=True, timeout=15)
 
     sources = None
     resp = ""

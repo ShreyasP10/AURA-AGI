@@ -102,8 +102,8 @@ class AudioProcessor:
                 if os.path.exists(temp_filename):
                     try:
                         os.remove(temp_filename)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[error {__file__}] {type(e).__name__}: {e}")
                 self.stream.close()
 
 
