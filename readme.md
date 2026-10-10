@@ -229,39 +229,79 @@ AURA-AGI/
 
 ---
 
-## Getting Started
+## Getting Started: Step-by-Step Guide (0 to 100)
 
-### Prerequisites
-- **Python 3.10+** + **Brave** (default) or **Google Chrome** + **Microphone** + **Git**
-- Windows recommended (registry system control), macOS/Linux works for voice/vision
+Whether you are a seasoned developer or completely new to Python, this guide will take you from absolute zero to running AURA-AGI on your machine.
 
-### Quick Start for Users (No Code)
-1. **Clone**: `git clone https://github.com/ShreyasP10/AURA-AGI.git && cd AURA-AGI`
-2. **Env**: `Copy-Item .env.example .env` → fill three keys (see Configuration)
-3. **Run**: `$env:PYTHONIOENCODING="utf-8"; $env:AURA_BROWSER="brave"; python main.py`
-4. **Talk or type**: say `aura hello`, or press Enter empty for mic, or just type. `stop` halts speech. Vision needs camera permission.
+### Step 1: System Requirements & Prerequisites
+Before you begin, ensure you have the following installed:
+1. **Python 3.10 or higher**: Download it from [python.org](https://www.python.org/downloads/). 
+   * **Important (Windows)**: During installation, make sure to check the box that says **"Add Python to PATH"**.
+2. **Git**: Download and install from [git-scm.com](https://git-scm.com/downloads).
+3. **Brave Browser (Recommended)** or **Google Chrome**: AURA uses Selenium for local speech-to-text, which works best with these browsers.
+4. **A Working Microphone**: Make sure your default system microphone is active and not muted.
 
-### Setup for Developers (Full Build)
+### Step 2: Download the Project
+Open your terminal (Command Prompt, PowerShell, or macOS/Linux Terminal) and run:
 ```bash
 git clone https://github.com/ShreyasP10/AURA-AGI.git
 cd AURA-AGI
-Copy-Item .env.example .env   # fill GROQ_AI / OPENROUTER / HUGGING_FACE_READ
-
-# install (py313: pygame needs binary wheel, pins are relaxed in requirements.txt)
-pip install --upgrade pip
-pip install -r requirements.txt --only-binary pygame
-
-# verify
-python -c "import sys; sys.stdout.reconfigure(encoding='utf-8'); import IMPORTS; print('OK')"
-
-# Vosk offline (optional)
-# download https://github.com/alphacep/vosk-api/releases → ASSETS/Vosk/
-python -c "from ENGINE.STT.vosk_recog import speech_to_text; print(list(speech_to_text('ASSETS/Vosk/vosk-model-small-en-us-0.15'))[:1])"
-
-# push your branch
-git checkout -b feature/amazing
-git push -u origin feature/amazing
 ```
+
+### Step 3: Set Up a Virtual Environment (Recommended)
+It is highly recommended to install AURA's dependencies in an isolated environment so it doesn't conflict with other Python projects on your PC.
+```bash
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
+
+# macOS/Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### Step 4: Install Dependencies
+With your virtual environment active (you should see `(.venv)` in your terminal prompt), install the required Python packages:
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+*(Note for Python 3.13 users: if Pygame fails to build, install the binary explicitly: `pip install -r requirements.txt --only-binary pygame`)*
+
+### Step 5: Configure API Keys
+AURA-AGI uses third-party AI models (Groq, OpenRouter) to think and process language. You need to provide API keys for these services.
+1. Copy the `.env.example` file to create a new `.env` file:
+   * **Windows (PowerShell)**: `Copy-Item .env.example .env`
+   * **macOS/Linux**: `cp .env.example .env`
+2. Open the `.env` file in any text editor (like Notepad or VS Code).
+3. Get your free API keys and paste them into the file:
+   * **GROQ_AI**: Get it for free at [console.groq.com](https://console.groq.com/)
+   * **OPENROUTER**: Get it for free at [openrouter.ai/keys](https://openrouter.ai/keys)
+   * **HUGGING_FACE_READ**: Get it for free at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+
+### Step 6: (Optional) Download Vosk for Offline Voice Recognition
+If you want AURA to recognize your voice completely offline without using the browser fallback:
+1. Download the Vosk small English model from [here](https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip).
+2. Extract the downloaded `.zip` file.
+3. Rename the extracted folder to `vosk-model-small-en-us-0.15` and place it inside the `ASSETS/Vosk/` directory in your AURA-AGI folder.
+
+### Step 7: Run AURA-AGI
+You are now ready to start the assistant! In your terminal, simply run:
+```bash
+# For Windows
+$env:PYTHONIOENCODING="utf-8"
+$env:AURA_BROWSER="brave"  # Or "chrome" if you prefer
+python main.py
+
+# For macOS/Linux
+PYTHONIOENCODING="utf-8" AURA_BROWSER="brave" python3 main.py
+```
+
+### Step 8: How to Interact
+* **Voice**: Just say **"aura"** followed by your command (e.g., *"Aura, what is the capital of France?"*).
+* **Keyboard**: Press `Enter` to manually trigger the microphone, or type your query directly into the terminal and press `Enter`.
+* **Stop**: If Aura is speaking and you want it to stop, just say or type **"stop"**, **"quiet"**, or **"cancel"**.
+* **Exit**: Type `/quit` or press `Ctrl+C` to exit the application.
 
 ---
 

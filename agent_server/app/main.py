@@ -107,7 +107,7 @@ def actions(request: Request) -> ActionPolicyService:
     return request.app.state.actions
 
 
-@app.get("/health")
+@app.get("/health", dependencies=[Depends(require_auth)])
 async def health(request: Request) -> dict:
     ollama = await request.app.state.ollama.health()
     search = await request.app.state.searxng.health()
@@ -120,7 +120,7 @@ async def health(request: Request) -> dict:
     }
 
 
-@app.get("/healthz", include_in_schema=False)
+@app.get("/healthz", include_in_schema=False, dependencies=[Depends(require_auth)])
 async def healthz(request: Request) -> dict:
     return await health(request)
 

@@ -17,15 +17,15 @@ if __name__ == "__main__":
         print(
             f"Hour: {hour}, Minute: {minute}, AM/PM: {am_pm}, Date: {date}, Alarm/Timer: {alarm_timer}"
         )
+        response = {"status": "error", "message": "Could not determine if you wanted an alarm or timer."}
         if alarm_timer == "alarm":
-            resposne = alarm_manager.set_alarm(hour, minute, am_pm, date)
+            response = alarm_manager.set_alarm(hour, minute, am_pm, date)
         elif alarm_timer == "timer":
-            resposne = alarm_manager.set_timer(hour, minute)
-        # resposne = alarm_manager.set_alarm_or_timer(hour, minute, am_pm, date, alarm_timer)
+            response = alarm_manager.set_timer(hour, minute)
         print(
             "Response Status: ",
-            resposne["status"],
+            response["status"],
             "Response Message: ",
-            resposne["message"],
+            response["message"],
         )
-        edge_tts.speak(resposne["message"])
+        edge_tts.speak(response["message"])
