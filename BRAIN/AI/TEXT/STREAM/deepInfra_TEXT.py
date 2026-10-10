@@ -64,12 +64,12 @@ def generate(
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         "X-Deepinfra-Source": "web-page",
     }
-    # Insert the system prompt at the beginning of the conversation history
-    conversation_history.insert(0, {"role": "system", "content": system_prompt})
+    # Copy history and prepend system prompt: never mutate the caller's list
+    messages = [{"role": "system", "content": system_prompt}] + list(conversation_history)
 
     payload = {
         "model": model,
-        "messages": conversation_history,
+        "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stop": [],

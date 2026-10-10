@@ -41,7 +41,7 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       searxng:
-        condition: service_started
+        condition: service_healthy
     networks:
       - agent_net
   searxng:
@@ -53,6 +53,12 @@ services:
     cap_drop:
       - ALL
     pids_limit: 256
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     environment:
       SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET in .env before starting}
       SEARXNG_LIMITER: "false"

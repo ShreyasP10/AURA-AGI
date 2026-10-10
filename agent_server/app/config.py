@@ -35,7 +35,7 @@ def get_settings() -> Settings:
     _api_secret = os.getenv("API_SECRET", "")
     if not _api_secret:
         _api_secret = secrets.token_hex(32)
-        print(f"\n[SECURITY] Generated missing API_SECRET. Use Bearer token: {_api_secret}\n")
+        
     
     searxng_secret = os.getenv("SEARXNG_SECRET", "")
     if not searxng_secret.strip() or "replace-with-a-random-secret" in searxng_secret.lower():

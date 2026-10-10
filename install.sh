@@ -17,11 +17,12 @@ else
     exit 1
 fi
 
-PY_VERSION=$($PY_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-if (( $(echo "$PY_VERSION < 3.10" | bc -l) )); then
+if ! $PY_CMD -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+    PY_VERSION=$($PY_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "unknown")
     echo -e "\033[1;31mError: AURA-AGI requires Python 3.10 or higher. Found Python $PY_VERSION.\033[0m"
     exit 1
 fi
+PY_VERSION=$($PY_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 echo -e "\033[1;32mFound Python $PY_VERSION.\033[0m"
 
 # 2. Create virtual environment

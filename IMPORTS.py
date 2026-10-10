@@ -192,16 +192,19 @@ class _LazyGroq:
     def __init__(self):
         self._c = None
 
-    def chat(self, *a, **k):
+    def get_client(self):
         if self._c is None:
             from groq import Groq
 
             self._c = Groq(api_key=os.environ.get("GROQ_AI"))
-        return self._c.chat
+        return self._c
+
+    def chat(self, *a, **k):
+        return self.get_client().chat
 
 
 _lazy_groq = _LazyGroq()
-agent = openGPT.ConversationalAgent()
+# agent = openGPT.ConversationalAgent()  # deferred: instantiate on-demand if needed
 # ai_model = deepseek_ai.DeepSeekAPI()
 # taskExecutor = RawDog.TaskExecutor()
 # engine = Partial_Async_HearlingAudioGenerator()

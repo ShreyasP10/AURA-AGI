@@ -16,6 +16,7 @@ searxng/cache/
 ASSETS/Vosk/
 ASSETS/porcupine/*.ppn
 ASSETS/conversation_history.json
+ASSETS/openGPT_IDs.txt
 ASSETS/STREAM_AUDIOS/
 *.mp3
 Subtitles_File_*.srt

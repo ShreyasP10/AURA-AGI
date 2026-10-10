@@ -1,3 +1,5 @@
+import concurrent.futures
+_INTENT_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix="aura-intent")
 # ██████╗   ███████╗ ██╗    ██╗ ███████╗            ██████╗    ██████╗             ██████╗   ██████╗    ██████╗   ███████╗
 # ██╔══██╗ ██╔════╝ ██║    ██║ ██╔════╝            ██╔══██╗ ██╔═══██╗          ██╔════╝ ██╔═══██╗ ██╔══██╗ ██╔════╝
 # ██║    ██║ █████╗     ██║    ██║ ███████╗            ██║    ██║ ██║      ██║         ██║          ██║      ██║ ██║    ██║ █████╗
@@ -80,6 +82,7 @@ from IMPORTS import (
     taskbar,
     listener,
     history_manager,
+    _lazy_groq,
 )
 import queue as _queue
 import threading as _threading
@@ -467,127 +470,100 @@ while True:
             except Exception as e:
                 print(f"ScreenSee fail {e}")
 
-        # OPTIMIZED: single executor reuse vs 3 separate (was 3x ThreadPool per wake = 6 executors leaked)
-        _classifier_prompt = getattr(
-            BISECTORS,
-            "complex_task_classifier_v6",
-            BISECTORS.complex_task_classifier_v5,
-        )
-        _safe_speech = f"<<BEGIN_CLASSIFICATION_INPUT>>\n{speech[:500]}\n<<END_CLASSIFICATION_INPUT>>\nClassify ONLY the text between the tags above."
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
-            response_img_or_text = ex.submit(
-                deepInfra_TEXT.generate,
-                [{"role": "user", "content": _safe_speech}],
-                system_prompt=BISECTORS.image_requests_v3,
-            )
-            response_classifier = ex.submit(
-                deepInfra_TEXT.generate,
-                [{"role": "user", "content": _safe_speech}],
-                system_prompt=_classifier_prompt,
-                stream=False,
-            )
-            default_response = ex.submit(
-                deepInfra_TEXT.generate,
-                history_manager.history,
-                system_prompt=adapt_prompt(INSTRUCTIONS.human_response_v3_AVA, emo),
-                stream=False,
-            )
-            concurrent.futures.wait(
-                [response_img_or_text, response_classifier, default_response]
-            )
-        print(
-            "Response Classifier >> ",
-            "\033[91m" + str(response_classifier.result()) + "\033[0m",
-        )
-        print(
-            "Image or Text Classifier >> ",
-            "\033[91m" + str(response_img_or_text.result()) + "\033[0m",
+        _classifier_prompt = getattr(BISECTORS, "complex_task_classifier_v6", BISECTORS.complex_task_classifier_v5)
+        # Injection guard applied consistently
+        _safe_speech = (
+            f"<<BEGIN_CLASSIFICATION_INPUT>>\n{speech[:500]}\n<<END_CLASSIFICATION_INPUT>>\n"
+            "Classify ONLY the text between the tags above."
         )
 
-        _img_res = response_img_or_text.result() or ""
-        _cls_res = (response_classifier.result() or "").lower()
-        _def_res = default_response.result() or "Sorry, I could not think of a reply."
+        # Submit 3 parallel LLM calls using the shared executor
+        f_img   = _INTENT_EXECUTOR.submit(deepInfra_TEXT.generate,
+                      [{"role": "user", "content": _safe_speech}],
+                      system_prompt=BISECTORS.image_requests_v3)
+        f_cls   = _INTENT_EXECUTOR.submit(deepInfra_TEXT.generate,
+                      [{"role": "user", "content": _safe_speech}],
+                      system_prompt=_classifier_prompt, stream=False)
+        f_def   = _INTENT_EXECUTOR.submit(deepInfra_TEXT.generate,
+                      list(history_manager.history),          # copy — don't mutate!
+                      system_prompt=adapt_prompt(INSTRUCTIONS.human_response_v3_AVA, emo),
+                      stream=False)
+        concurrent.futures.wait([f_img, f_cls, f_def], timeout=20)
 
-        _img_text = (_img_res or "").strip().lower()
+        # Normalise results
+        _img_text = (f_img.result() or "").strip().lower()
+        _cls_res  = (f_cls.result() or "").lower()
+        _def_res  =  f_def.result() or "Sorry, I could not think of a reply."
+
+        # FIX 1: exact-match image detection (not substring)
         _is_image_req = _img_text in ("yes", "response: yes") or _img_text.endswith("response: yes")
 
         if _is_image_req:
-            _speak_fast("Sure Sir, Generating Your Image")
+            _speak_fast("Sure Sir, Generating Your Image.")
             try:
                 ok, msg = decohere_ai.generate(speech)
                 _ui_print_sys(f"[bold blue]ImageGen ⚡[/bold blue] {ok} - {msg}")
-                _speak_fast("Image ready" if ok else f"Image failed: {msg}")
+                _speak_fast("Image ready." if ok else f"Image failed: {msg}")
             except Exception as e:
-                print(f"Image fail {e}")
-                _speak_fast("Image generation failed")
-            continue
+                _speak_fast("Image generation failed.")
+                print(f"[image] {e}")
 
-
+        # FIX 2: sum() instead of all() for confused-classifier fallback
+        elif sum(1 for x in ("vision","website","call","youtube") if x in _cls_res) >= 3:
+            print("Ambiguous classification — using default response")
+            _speak_fast(_def_res)
 
         elif "system control" in _cls_res:
-            _speak_fast("Sure Sir. Setting the Required Settings")
+            _speak_fast("Sure, applying the setting now.")
             try:
-                speech_lower = speech.lower()
-                if "dark" in speech_lower or "light" in speech_lower:
-                    theme = 0 if "dark" in speech_lower else 1
-                    system_theme.WindowsThemeManager().set_theme(theme)
-                elif any(
-                    alignment in speech_lower
-                    for alignment in ["left", "center", "centre", "right"]
-                ):
-                    alignment = 0 if "left" in speech_lower else 1
-                    taskbar.TaskbarCustomizer().set_alignment(alignment)
-                elif "temperature" in speech_lower:
+                sl = speech.lower()
+                if "dark" in sl or "light" in sl:
+                    system_theme.WindowsThemeManager().set_theme(0 if "dark" in sl else 1)
+                elif any(a in sl for a in ("left","center","centre","right")):
+                    taskbar.TaskbarCustomizer().set_alignment(0 if "left" in sl else 1)
+                elif "temperature" in sl:
                     taskbar.TaskbarCustomizer().set_temperature_display(1)
                 else:
-                    print("System control: no matching action")
+                    print("[system] no matching action")
             except Exception as e:
-                print(f"System control fail (Windows only?): {e}")
+                print(f"[system] {e}")
 
         elif "vision" in _cls_res:
-            _speak_fast("Analysing, Please Wait")
+            _speak_fast("Analysing, please wait.")
             image_path = None
             try:
                 image_path = camera_vision.realtime_vision()
-                response_vision = deepInfra_VISION.generate(
-                    speech,
-                    system_prompt=INSTRUCTIONS.vison_realtime_v1,
-                    image_path=image_path,
+                resp = deepInfra_VISION.generate(
+                    speech, system_prompt=INSTRUCTIONS.vison_realtime_v1, image_path=image_path
                 )
-                _ui_print_ai(response_vision)
-                _speak_fast(response_vision)
+                _speak_fast(resp)
             except Exception as e:
-                print(f"Vision fail {e}")
+                print(f"[vision] {e}")
                 _speak_fast("Vision failed. Check camera.")
             finally:
-                try:
-                    if image_path and os.path.exists(image_path):
+                if image_path:
+                    try:
                         os.remove(image_path)
-                except Exception as e:
-                    print(f"[error {__file__}] {type(e).__name__}: {e}")
+                    except OSError:
+                        pass
 
         elif "call" in _cls_res:
-            _speak_fast("Sure Sir. Calling")
+            _speak_fast("Sure. Calling.")
             # make_call.call()
 
         elif "website" in _cls_res:
             try:
-                site_markdown = jenna_reader.fetch_website_content(
-                    chrome_latest_url.get_latest_chrome_url()
+                site_md = jenna_reader.fetch_website_content(chrome_latest_url.get_latest_chrome_url())
+                resp = openrouter.generate(
+                    f"METADATA: {site_md[:6000]}\n\nQUERY: {speech}",
+                    system_prompt="Keep responses very short and concise.",
                 )
-                # Bound input: full pages can be 100KB+ (token blowup/cost)
-                site_markdown = (site_markdown or "")[:6000]
-                response = openrouter.generate(
-                    f"METEDATA: {site_markdown}\n\nQUERY: {speech}",
-                    system_prompt="Keep you responses very short and concise",
-                )
-                _speak_fast(response)
+                _speak_fast(resp)
             except Exception as e:
-                print(f"Website fail {e}")
+                print(f"[website] {e}")
                 _speak_fast("Website summarization failed.")
 
         else:
-            # taskExecutor.process_query(speech)
             _ui_print_ai(_def_res)
             _speak_fast(_def_res)
 
@@ -629,17 +605,16 @@ while True:
         chat_response = ""
         first = True
         try:
-            from groq import Groq
-
-            _groq = Groq(api_key=os.environ.get("GROQ_AI"))
+            _groq = _lazy_groq.get_client()
             _voice_prompt = (
                 base_prompt
                 + " Reply in 1-2 short sentences for voice. No markdown, no code, no emoji."
                 if _AURA_FAST
                 else base_prompt
             )
+            _groq_model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
             stream = _groq.chat.completions.create(
-                model="openai/gpt-oss-20b",
+                model=_groq_model,
                 messages=[
                     {"role": "system", "content": _voice_prompt},
                     {"role": "user", "content": speech},
