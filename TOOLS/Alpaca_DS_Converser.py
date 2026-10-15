@@ -74,9 +74,11 @@ class ConversationHistoryManager:
         with open(self.conversation_file, "w") as file:
             json.dump(data, file, indent=4)
 
-        self.store_history(
-            self.history + [{"role": "assistant", "content": assistant_response}]
-        )
+        new_entries = []
+        if not (self.history and self.history[-1].get("role") == "user" and self.history[-1].get("content") == user_query):
+            new_entries.append({"role": "user", "content": user_query})
+        new_entries.append({"role": "assistant", "content": assistant_response})
+        self.store_history(self.history + new_entries)
 
     def load_history(self):
         with open(self.conversation_file, "r") as file:

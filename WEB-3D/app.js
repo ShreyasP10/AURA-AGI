@@ -459,7 +459,7 @@ async function getAIReply(prompt){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({
-        model:'openai/gpt-oss-20b',
+        model:'llama-3.1-8b-instant',
         messages:[
           {role:'system',content:'You are AURA, a helpful voice assistant. Answer directly and concisely in 1-2 sentences. Do NOT repeat or echo the user prompt. Do NOT say "You said". Just answer.'},
           {role:'user',content:prompt}

@@ -314,20 +314,13 @@ class SpeechToTextListener:
         initiating speech-to-text conversion. The function returns the transcribed text if the
         listening process completes successfully.
         """
-        import time as _t
-
-        deadline = _t.time() + timeout_s + 15
-        while True:
-            if _t.time() > deadline:
-                return None
-            result = self.main(timeout_s=timeout_s)
-            if result and len(result.strip()) != 0:
-                print("\r" + " " * (len(result) + 16) + "\r", end="", flush=True)
-                if prints:
-                    print("\033[92m\rYOU SAID: " + f"{result}\033[0m\n")
-                return result
-            # None/empty = timeout or fail -> return None so caller falls back to typing
+        result = self.main(timeout_s=timeout_s)
+        if result and len(result.strip()) != 0:
+            print("\r" + " " * (len(result) + 16) + "\r", end="", flush=True)
+            if prints:
+                print("\033[92m\rYOU SAID: " + f"{result}\033[0m\n")
             return result
+        return None
 
 
 if __name__ == "__main__":

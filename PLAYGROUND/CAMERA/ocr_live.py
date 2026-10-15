@@ -24,7 +24,8 @@ try:
         return img
 
     def ocr_pytesseract(image_path: str) -> str:
-        return pytesseract.image_to_string(_resize(Image.open(image_path)))
+        with Image.open(image_path) as img:
+            return pytesseract.image_to_string(_resize(img.copy()))
 
     _OCR_AVAILABLE = True
 except ImportError:

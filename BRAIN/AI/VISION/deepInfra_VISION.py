@@ -74,17 +74,20 @@ def generate(
         ],
         "stream": False,
     }
-    response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+    response = None
     try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         data = response.json()
         if "choices" not in data or not data["choices"]:
             return f"Vision error: no choices in {data}"
         return data["choices"][0]["message"]["content"]
     except requests.exceptions.RequestException as e:
-        return f"Vision API failed: {e} – {response.text[:200]}"
+        resp_text = response.text[:200] if response is not None else ""
+        return f"Vision API failed: {e} – {resp_text}"
     except (KeyError, IndexError) as e:
-        return f"Vision parse error: {e} – {response.text[:200]}"
+        resp_text = response.text[:200] if response is not None else ""
+        return f"Vision parse error: {e} – {resp_text}"
 
 
 if __name__ == "__main__":

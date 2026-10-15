@@ -45,7 +45,7 @@ class GoogleDriveMirror:
             return []
         root = self.root.resolve()
         records: list[dict[str, Any]] = []
-        for path in sorted(root.rglob("*"), key=lambda item: str(item).lower()):
+        for path in root.rglob("*"):
             if not path.is_file() or path.suffix.lower() not in self.allowed_extensions:
                 continue
             try:
@@ -66,6 +66,7 @@ class GoogleDriveMirror:
             )
             if len(records) >= limit:
                 break
+        records.sort(key=lambda r: r["relative_path"].lower())
         return records
 
     def import_file(

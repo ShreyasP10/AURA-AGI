@@ -439,7 +439,7 @@ while True:
                     res = (
                         "\n".join(
                             [
-                                f"{i + 1}. {t['text']} !{t['priority']}"
+                                f"{i + 1}. {t.get('text', '')} !{t.get('priority', 'none')}"
                                 for i, t in enumerate(tasks[:5])
                             ]
                         )
@@ -447,7 +447,7 @@ while True:
                     )
                 else:
                     t = add_task(speech)
-                    res = f"Task added: {t['text']}"
+                    res = f"Task added: {t.get('text', '')}"
                 _ui_print_sys(f"[bold blue]TaskBoard ⚡[/bold blue] {res}")
                 _speak_fast(res)
                 continue
@@ -490,10 +490,17 @@ while True:
                       stream=False)
         concurrent.futures.wait([f_img, f_cls, f_def], timeout=20)
 
-        # Normalise results
-        _img_text = (f_img.result() or "").strip().lower()
-        _cls_res  = (f_cls.result() or "").lower()
-        _def_res  =  f_def.result() or "Sorry, I could not think of a reply."
+        # Normalise results safely (prevent unhandled future exceptions from crashing the loop)
+        def _safe_res(fut, default=""):
+            try:
+                return fut.result(timeout=0) if fut.done() else default
+            except Exception as e:
+                print(f"[intent future] {e}")
+                return default
+
+        _img_text = (_safe_res(f_img) or "").strip().lower()
+        _cls_res  = (_safe_res(f_cls) or "").lower()
+        _def_res  =  _safe_res(f_def, "Sorry, I could not think of a reply.")
 
         # FIX 1: exact-match image detection (not substring)
         _is_image_req = _img_text in ("yes", "response: yes") or _img_text.endswith("response: yes")
@@ -604,14 +611,14 @@ while True:
         # REALTIME: max_tokens 150 (voice, was 512) + voice-brevity prompt + flush on ,;: too + time flush
         chat_response = ""
         first = True
+        _voice_prompt = (
+            base_prompt
+            + " Reply in 1-2 short sentences for voice. No markdown, no code, no emoji."
+            if _AURA_FAST
+            else base_prompt
+        )
         try:
             _groq = _lazy_groq.get_client()
-            _voice_prompt = (
-                base_prompt
-                + " Reply in 1-2 short sentences for voice. No markdown, no code, no emoji."
-                if _AURA_FAST
-                else base_prompt
-            )
             _groq_model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
             stream = _groq.chat.completions.create(
                 model=_groq_model,

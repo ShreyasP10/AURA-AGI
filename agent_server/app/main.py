@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
+import ipaddress
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import secrets
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -120,9 +122,9 @@ async def health(request: Request) -> dict:
     }
 
 
-@app.get("/healthz", include_in_schema=False, dependencies=[Depends(require_auth)])
-async def healthz(request: Request) -> dict:
-    return await health(request)
+@app.get("/healthz", include_in_schema=False)
+async def healthz() -> dict:
+    return {"status": "ok"}
 
 
 
@@ -134,13 +136,15 @@ def favicon() -> Response:
 
 @app.get("/api/client-token", include_in_schema=False)
 async def client_token(request: Request) -> dict:
-    # Peer check uses the actual TCP source (not spoofable); Host header is only defense-in-depth.
+    # Allow localhost or private network (LAN / Docker bridge) peers
     peer = request.client.host if request.client else ""
-    if peer not in ("127.0.0.1", "::1"):
-        raise HTTPException(status_code=403)
-    host = request.headers.get("host", "")
-    if not host.startswith("127.") and not host.startswith("localhost"):
-        raise HTTPException(status_code=403)
+    try:
+        client_ip = ipaddress.ip_address(peer)
+        if not (client_ip.is_loopback or client_ip.is_private):
+            raise HTTPException(status_code=403)
+    except ValueError:
+        if peer not in ("127.0.0.1", "::1", "localhost"):
+            raise HTTPException(status_code=403)
     return {"token": settings.api_secret}
 
 @app.get("/api/profiles", response_model=list[ProfileResponse], dependencies=[Depends(require_auth)])

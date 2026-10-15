@@ -71,6 +71,7 @@ class HotwordDetector:
             if pathlib.Path("ASSETS/porcupine").exists()
             else []
         )
+        self._ppn = _ppn
         try:
             if _ppn:
                 # custom aura model found — use keyword_paths
@@ -132,7 +133,12 @@ class HotwordDetector:
                 )
                 keyword_index = self.porcupine.process(audio_data)
                 if keyword_index >= 0:
-                    detected_keyword = self.keywords[keyword_index]
+                    if getattr(self, "_ppn", None) and keyword_index < len(self._ppn):
+                        detected_keyword = self._ppn[keyword_index].stem
+                    elif keyword_index < len(self.keywords):
+                        detected_keyword = self.keywords[keyword_index]
+                    else:
+                        detected_keyword = "hotword"
                     if self.prints:
                         print(f"Hotword detected: {detected_keyword}")
                     if self.activation_sound_path:

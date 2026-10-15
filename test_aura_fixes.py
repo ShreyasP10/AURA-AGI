@@ -2,7 +2,8 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock, patch
 
-# --- Placeholder imports based on the test cases provided ---
+import sys, os
+sys.path.insert(0, os.path.abspath("agent_server"))
 # (You will need to ensure these import paths match your actual project structure)
 # from main import _is_image_req_from, _STOP_WORDS, _tts_queue, _stop_speaking
 # from BRAIN.AI.TEXT.API import deepInfra_TEXT
@@ -115,3 +116,46 @@ def test_stop_speaking_empties_queue_without_task_done_error():
                 
     _stop_speaking()
     assert _tts_queue.empty()
+
+# --- 11. Whisper audioop fallback ---
+def test_whisper_rms_fallback():
+    import struct, math
+    raw_audio = struct.pack("10h", 100, -100, 200, -200, 300, -300, 400, -400, 500, -500)
+    count = len(raw_audio) // 2
+    shorts = struct.unpack(f"{count}h", raw_audio)
+    rms = int(math.sqrt(sum(s * s for s in shorts) / count))
+    assert rms > 0
+
+# --- 12. History sync preserves user queries ---
+def test_alpaca_history_sync_preserves_user():
+    import tempfile, os
+    from TOOLS.Alpaca_DS_Converser import ConversationHistoryManager
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp_name = f.name
+    try:
+        mgr = ConversationHistoryManager(conversation_file=tmp_name)
+        mgr.update_file("What is Python?", "Python is a programming language.")
+        assert len(mgr.history) == 2
+        assert mgr.history[0]["role"] == "user"
+        assert mgr.history[0]["content"] == "What is Python?"
+        assert mgr.history[1]["role"] == "assistant"
+    finally:
+        if os.path.exists(tmp_name):
+            os.remove(tmp_name)
+
+# --- 13. Action expiry handles naive and aware ISO datetimes ---
+def test_action_expiry_handles_naive_and_aware():
+    from app.services.actions import ActionPolicyService
+    from datetime import datetime, UTC, timedelta
+    
+    # Naive string (past)
+    naive_past = (datetime.now() - timedelta(minutes=5)).isoformat()
+    assert ActionPolicyService._is_expired(naive_past) is True
+    
+    # Naive string (future)
+    naive_future = (datetime.now() + timedelta(minutes=5)).isoformat()
+    assert ActionPolicyService._is_expired(naive_future) is False
+    
+    # Aware string (past)
+    aware_past = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
+    assert ActionPolicyService._is_expired(aware_past) is True

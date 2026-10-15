@@ -73,7 +73,7 @@ def list_tasks(filter_tag=None, search=None):
     if filter_tag:
         tasks = [t for t in tasks if filter_tag in t.get("tags", [])]
     if search:
-        tasks = [t for t in tasks if search.lower() in t["text"].lower()]
+        tasks = [t for t in tasks if search.lower() in t.get("text", "").lower()]
     return tasks
 
 

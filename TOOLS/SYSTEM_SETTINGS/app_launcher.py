@@ -3,7 +3,6 @@
 Supports brave, chrome, vscode, spotify, notepad, explorer
 """
 
-from functools import lru_cache
 import subprocess
 import os
 import shutil
@@ -19,7 +18,6 @@ APPS = {
 }
 
 
-@lru_cache(maxsize=32)
 def open_app(name: str):
     name = name.lower().strip()
     # Allowlist: only known app keys or bare executable names (no shell -> no injection

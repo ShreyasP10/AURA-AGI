@@ -66,9 +66,22 @@ try:
         Stops after `silence_ms` of quiet once `min_voiced_s` of speech heard;
         hard-caps at `max_s`. Returns transcribed text (may be "").
         """
-        import audioop
-        import time as _time
+        import struct
+        import math
+        try:
+            import audioop
+        except ModuleNotFoundError:
+            class _AudioOpFallback:
+                @staticmethod
+                def rms(fragment, width):
+                    if not fragment or width != 2:
+                        return 0
+                    count = len(fragment) // 2
+                    shorts = struct.unpack(f"{count}h", fragment)
+                    return int(math.sqrt(sum(s * s for s in shorts) / count)) if count else 0
+            audioop = _AudioOpFallback()
 
+        import time as _time
         import pyaudio
         import wave
 

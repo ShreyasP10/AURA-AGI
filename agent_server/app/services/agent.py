@@ -6,7 +6,7 @@ import re
 import socket
 from collections.abc import AsyncIterator
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -127,7 +127,8 @@ class AgentService:
             ) as client:
                 response = await client.get(url)
                 if response.status_code in {301, 302, 307, 308}:
-                    location = response.headers.get("location", "")
+                    raw_loc = response.headers.get("location", "")
+                    location = urljoin(url, raw_loc) if raw_loc else ""
                     if location and await self._is_public_http_url(location):
                         response = await client.get(location)
                     else:

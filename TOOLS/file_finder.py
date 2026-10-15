@@ -53,7 +53,7 @@ def find_and_summarize(query: str):
                 + "\nSummarize in one line."
             )
             r = _g.chat.completions.create(
-                model="openai/gpt-oss-20b",
+                model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=60,
             )

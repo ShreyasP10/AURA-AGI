@@ -101,7 +101,7 @@ class ActionPolicyService:
                 "Confirmation phrase was not recognized. Say or type 'confirm'."
             )
         expires_at = action.get("expires_at")
-        if expires_at and datetime.fromisoformat(expires_at) <= datetime.now(UTC):
+        if self._is_expired(expires_at):
             self.database.set_action_status(action_id, "expired")
             raise ValueError("The confirmation window expired; create a new proposal.")
         updated = self.database.set_action_status(action_id, "confirmed")
@@ -164,9 +164,7 @@ class ActionPolicyService:
                 "The owner-managed rule is disabled.",
                 rule_id,
             )
-        if rule["expires_at"] and datetime.fromisoformat(
-            rule["expires_at"]
-        ) <= datetime.now(UTC):
+        if self._is_expired(rule["expires_at"]):
             return self.database.create_action(
                 profile_id,
                 action_type,
@@ -199,6 +197,15 @@ class ActionPolicyService:
             rule_id,
             expires_at=rule["expires_at"],
         )
+
+    @staticmethod
+    def _is_expired(value: str | None) -> bool:
+        if not value:
+            return False
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.astimezone()
+        return dt <= datetime.now(UTC)
 
     @staticmethod
     def _contains_confirmation(value: str) -> bool:

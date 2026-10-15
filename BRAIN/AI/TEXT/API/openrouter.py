@@ -118,7 +118,7 @@ def generate(
     try:
         for line in response.iter_lines(decode_unicode=True, chunk_size=1):
             if line:
-                modified_value: str = re.sub("data:", "", line)
+                modified_value = line[5:].strip() if line.startswith("data:") else line.strip()
                 try:
                     json_modified_value = json.loads(modified_value)
                     delta = (

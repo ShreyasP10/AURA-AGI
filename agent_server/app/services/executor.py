@@ -122,4 +122,9 @@ class ActionExecutor:
 
     @staticmethod
     def _is_expired(value: str | None) -> bool:
-        return bool(value and datetime.fromisoformat(value) <= datetime.now(UTC))
+        if not value:
+            return False
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.astimezone()
+        return dt <= datetime.now(UTC)

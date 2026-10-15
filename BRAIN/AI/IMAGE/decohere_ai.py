@@ -66,6 +66,7 @@ def generate(
             if not base64_image_data:
                 return False, f"No image in response: {response.text[:200]}"
             image_bytes = base64.b64decode(base64_image_data)
+            os.makedirs(os.path.dirname(image_path) or ".", exist_ok=True)
             with open(image_path, "wb") as image_file:
                 image_file.write(image_bytes)
             return True, image_path

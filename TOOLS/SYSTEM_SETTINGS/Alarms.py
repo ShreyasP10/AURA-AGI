@@ -62,6 +62,7 @@ class AlarmManager:
         """
         Saves the current alarms to the JSON file.
         """
+        os.makedirs(os.path.dirname(self._alarm_file) or ".", exist_ok=True)
         with open(self._alarm_file, "w") as f:
             json.dump(self._alarms, f)
 
