@@ -24,18 +24,27 @@ try:
         segs, _ = m.transcribe(path, language=lang, beam_size=5)
         return " ".join([s.text for s in segs]).strip()
 
-    def listen_offline(duration=5, lang="en"):
+    def listen_offline(duration=5, lang="en", device_index=None):
         import pyaudio
         import wave
 
+        if device_index is None:
+            try:
+                device_index = int(os.environ.get("AURA_MIC_INDEX", "-1"))
+            except ValueError:
+                device_index = -1
+
         pa = pyaudio.PyAudio()
-        stream = pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=16000,
-            input=True,
-            frames_per_buffer=512,
-        )
+        stream_kwargs = {
+            "format": pyaudio.paInt16,
+            "channels": 1,
+            "rate": 16000,
+            "input": True,
+            "frames_per_buffer": 512,
+        }
+        if device_index >= 0:
+            stream_kwargs["input_device_index"] = device_index
+        stream = pa.open(**stream_kwargs)
         print(f"Whisper offline listening {duration}s...")
         frames = []
         for _ in range(int(16000 / 512 * duration)):
@@ -60,6 +69,7 @@ try:
         max_s=25,
         min_voiced_s=0.4,
         energy_threshold=400,
+        device_index=None,
     ):
         """Record until silence (energy VAD), then transcribe. Best accuracy, offline.
 
@@ -85,14 +95,23 @@ try:
         import pyaudio
         import wave
 
+        if device_index is None:
+            try:
+                device_index = int(os.environ.get("AURA_MIC_INDEX", "-1"))
+            except ValueError:
+                device_index = -1
+
         pa = pyaudio.PyAudio()
-        stream = pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=16000,
-            input=True,
-            frames_per_buffer=512,
-        )
+        stream_kwargs = {
+            "format": pyaudio.paInt16,
+            "channels": 1,
+            "rate": 16000,
+            "input": True,
+            "frames_per_buffer": 512,
+        }
+        if device_index >= 0:
+            stream_kwargs["input_device_index"] = device_index
+        stream = pa.open(**stream_kwargs)
         chunk_s = 512 / 16000
         need_silent = max(1, int(silence_ms / 1000 / chunk_s))
         max_chunks = max(1, int(max_s / chunk_s))

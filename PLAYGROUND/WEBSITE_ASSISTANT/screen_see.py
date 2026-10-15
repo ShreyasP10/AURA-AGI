@@ -10,7 +10,11 @@ try:
     import mss.tools
     from PIL import Image
 
-    def capture_screen(path="ASSETS/screen_capture.png"):
+    def capture_screen(path=None):
+        if path is None:
+            import tempfile
+            path = os.path.join(tempfile.gettempdir(), f"aura_screen_{os.getpid()}.jpg")
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with mss.mss() as sct:
             mon = sct.monitors[1]
             shot = sct.grab(mon)
@@ -23,7 +27,11 @@ try:
             return path
 except ImportError:
 
-    def capture_screen(p="ASSETS/screen_capture.png"):
+    def capture_screen(p=None):
+        if p is None:
+            import tempfile
+            p = os.path.join(tempfile.gettempdir(), f"aura_screen_{os.getpid()}.jpg")
+        os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
         # fallback via pyautogui
         try:
             import pyautogui

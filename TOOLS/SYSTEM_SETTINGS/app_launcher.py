@@ -22,9 +22,10 @@ def open_app(name: str):
     name = name.lower().strip()
     # Allowlist: only known app keys or bare executable names (no shell -> no injection
     # via voice input like "aura open x; rm -rf").
+    clean_name = name.replace("open", "").strip() or name
     # fuzzy match
     for k, path in APPS.items():
-        if k in name or name in k:
+        if k in name or (len(clean_name) >= 3 and clean_name in k):
             full = os.path.expandvars(path)
             if os.path.exists(full) or shutil.which(full):
                 subprocess.Popen(

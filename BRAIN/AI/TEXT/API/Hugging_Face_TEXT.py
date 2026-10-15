@@ -45,7 +45,11 @@ def generate(
 
     # FIX: api-inference.huggingface.co DNS NXDOMAIN (deprecated) -> use new HF Inference endpoint
     # InferenceClient now auto-routes via https://api.huggingface.co; pass model id directly
-    api_key = os.environ.get("HUGGING_FACE_READ")
+    api_key = (
+        os.environ.get("HUGGING_FACE_READ")
+        or os.environ.get("HF_TOKEN")
+        or os.environ.get("HUGGINGFACE_API_KEY")
+    )
     # Use new HF router: model id + provider auto, fallback to legacy if needed
     try:
         client = InferenceClient(

@@ -146,7 +146,7 @@ class AgentService:
             root = soup.find("article") or soup.find("main") or soup.body or soup
             text = " ".join(root.stripped_strings)
             return re.sub(r"\s+", " ", text)[:3500]
-        except (httpx.HTTPError, ValueError):
+        except (httpx.HTTPError, ValueError, asyncio.TimeoutError, OSError):
             return ""
 
     def _messages(

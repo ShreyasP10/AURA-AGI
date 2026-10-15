@@ -46,13 +46,63 @@ from app.services.vault import ProfileVault
 settings = get_settings()
 static_dir = Path(__file__).parent / "static"
 
+import time
+import threading
+from collections import defaultdict
+
+
+class InMemoryRateLimiter:
+    """Sliding-window in-memory rate limiter per client IP."""
+
+    def __init__(self, max_requests: int = 120, window_seconds: float = 60.0):
+        self.max_requests = max_requests
+        self.window = window_seconds
+        self._records: dict[str, list[float]] = defaultdict(list)
+        self._lock = threading.Lock()
+
+    def is_allowed(self, client_id: str) -> bool:
+        now = time.time()
+        cutoff = now - self.window
+        with self._lock:
+            history = [t for t in self._records[client_id] if t > cutoff]
+            if len(history) >= self.max_requests:
+                self._records[client_id] = history
+                return False
+            history.append(now)
+            self._records[client_id] = history
+            return True
+
+
+rate_limiter = InMemoryRateLimiter(max_requests=120, window_seconds=60.0)
+token_rate_limiter = InMemoryRateLimiter(max_requests=30, window_seconds=60.0)
+
+
+def check_rate_limit(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    if not rate_limiter.is_allowed(client_ip):
+        raise HTTPException(
+            status_code=429, detail="Too many requests. Please slow down."
+        )
+
+
+def check_token_rate_limit(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    if not token_rate_limiter.is_allowed(client_ip):
+        raise HTTPException(
+            status_code=429, detail="Too many token requests. Please wait."
+        )
+
+
 _bearer = HTTPBearer(auto_error=False)
-def require_auth(creds: HTTPAuthorizationCredentials | None = Security(_bearer)) -> None:
+
+
+def require_auth(
+    creds: HTTPAuthorizationCredentials | None = Security(_bearer),
+) -> None:
     if not settings.api_secret:
         return
     if not creds or not secrets.compare_digest(creds.credentials, settings.api_secret):
         raise HTTPException(status_code=401, detail="Unauthorized")
-
 
 
 @asynccontextmanager
@@ -134,7 +184,7 @@ def favicon() -> Response:
     return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
 
 
-@app.get("/api/client-token", include_in_schema=False)
+@app.get("/api/client-token", dependencies=[Depends(check_token_rate_limit)], include_in_schema=False)
 async def client_token(request: Request) -> dict:
     # Allow localhost or private network (LAN / Docker bridge) peers
     peer = request.client.host if request.client else ""
@@ -253,7 +303,7 @@ def import_google_drive_file(payload: DriveImportRequest, request: Request) -> d
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
-@app.post("/api/chat/stream", dependencies=[Depends(require_auth)])
+@app.post("/api/chat/stream", dependencies=[Depends(require_auth), Depends(check_rate_limit)])
 async def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
     async def events() -> AsyncIterator[str]:
         async for event in request.app.state.agent.stream_chat(

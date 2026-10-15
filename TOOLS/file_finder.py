@@ -5,22 +5,23 @@ Searches user directory with Groq summarizer
 
 import os
 import pathlib
-import fnmatch
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
 try:
     from groq import Groq
 
-    _g = Groq(api_key=os.environ.get("GROQ_AI")) if os.environ.get("GROQ_AI") else None
+    _groq_key = os.environ.get("GROQ_AI") or os.environ.get("GROQ_API_KEY")
+    _g = Groq(api_key=_groq_key) if _groq_key else None
 except Exception:
     _g = None
 
 
 def find_files(query: str, root=None, max_results=10):
     root = root or os.path.expanduser("~")
-    # extract filename from "find my resume" -> resume
-    q = query.lower().replace("find", "").replace("my", "").strip() or query
+    # extract filename using word boundaries: "find my resume" -> "resume"
+    q = re.sub(r"\b(find|search|for|my|the|a|files?)\b", "", query, flags=re.IGNORECASE).strip() or query
     matches = []
     for dirpath, _, files in os.walk(root):
         if dirpath.count(os.sep) - root.count(os.sep) > 4:

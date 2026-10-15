@@ -68,9 +68,10 @@ def generate(
     use_model = model if isinstance(model, str) and "/" not in model and "-" in model else _DEFAULT_MODEL
 
     import time
+    api_key = os.environ.get("GROQ_AI") or os.environ.get("GROQ_API_KEY")
     for attempt in range(3):
         try:
-            client = Groq(api_key=os.environ.get("GROQ_AI"), timeout=30)
+            client = Groq(api_key=api_key, timeout=30) if api_key else Groq(timeout=30)
             chat_completion = client.chat.completions.create(
                 messages=messages,
                 model=use_model,

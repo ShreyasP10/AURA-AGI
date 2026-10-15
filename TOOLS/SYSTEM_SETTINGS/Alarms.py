@@ -234,14 +234,19 @@ class AlarmManager:
                 f"\033[96mSetting {alarm_type} for {hour}:{minute} {meridiem} on {date}\033[0m"
             )
 
+        now = datetime.datetime.now()
         if date is None:
-            date = datetime.datetime.now().strftime("%Y-%m-%d")
+            date = now.strftime("%Y-%m-%d")
         if hour is None:
             hour = 0
         if meridiem.upper() == "PM" and hour < 12:
             hour += 12
         elif meridiem.upper() == "AM" and hour == 12:
             hour = 0
+
+        alarm_dt = datetime.datetime.strptime(f"{date} {hour:02d}:{minute:02d}:00", "%Y-%m-%d %H:%M:%S")
+        if alarm_dt <= now and date == now.strftime("%Y-%m-%d"):
+            date = (now + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         alarm_time = f"{date} {hour:02d}:{minute:02d}:00"
 
         if self._is_duplicate_alarm(alarm_time, alarm_type):

@@ -113,6 +113,14 @@ def speak(
         except Exception as e:
             print(f"[error {__file__}] {type(e).__name__}: {e}")
         try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    return pool.submit(asyncio.run, _run()).result(timeout=60)
             return asyncio.run(_run())
         except Exception as e:
             print(f"edge_tts in-process failed: {type(e).__name__}: {str(e)[:150]}")

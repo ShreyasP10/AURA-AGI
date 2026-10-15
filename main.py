@@ -480,12 +480,13 @@ while True:
         # Submit 3 parallel LLM calls using the shared executor
         f_img   = _INTENT_EXECUTOR.submit(deepInfra_TEXT.generate,
                       [{"role": "user", "content": _safe_speech}],
-                      system_prompt=BISECTORS.image_requests_v3)
+                      system_prompt=BISECTORS.image_requests_v3,
+                      stream=False)
         f_cls   = _INTENT_EXECUTOR.submit(deepInfra_TEXT.generate,
                       [{"role": "user", "content": _safe_speech}],
                       system_prompt=_classifier_prompt, stream=False)
         f_def   = _INTENT_EXECUTOR.submit(deepInfra_TEXT.generate,
-                      list(history_manager.history),          # copy — don't mutate!
+                      list(history_manager.history) + [{"role": "user", "content": speech}],
                       system_prompt=adapt_prompt(INSTRUCTIONS.human_response_v3_AVA, emo),
                       stream=False)
         concurrent.futures.wait([f_img, f_cls, f_def], timeout=20)
@@ -510,7 +511,9 @@ while True:
             try:
                 ok, msg = decohere_ai.generate(speech)
                 _ui_print_sys(f"[bold blue]ImageGen ⚡[/bold blue] {ok} - {msg}")
-                _speak_fast("Image ready." if ok else f"Image failed: {msg}")
+                reply_msg = "Image ready." if ok else f"Image failed: {msg}"
+                _speak_fast(reply_msg)
+                history_manager.update_file(speech, reply_msg)
             except Exception as e:
                 _speak_fast("Image generation failed.")
                 print(f"[image] {e}")
@@ -518,7 +521,9 @@ while True:
         # FIX 2: sum() instead of all() for confused-classifier fallback
         elif sum(1 for x in ("vision","website","call","youtube") if x in _cls_res) >= 3:
             print("Ambiguous classification — using default response")
+            _ui_print_ai(_def_res)
             _speak_fast(_def_res)
+            history_manager.update_file(speech, _def_res)
 
         elif "system control" in _cls_res:
             _speak_fast("Sure, applying the setting now.")
@@ -532,6 +537,7 @@ while True:
                     taskbar.TaskbarCustomizer().set_temperature_display(1)
                 else:
                     print("[system] no matching action")
+                history_manager.update_file(speech, "Applied system setting.")
             except Exception as e:
                 print(f"[system] {e}")
 
@@ -543,7 +549,9 @@ while True:
                 resp = deepInfra_VISION.generate(
                     speech, system_prompt=INSTRUCTIONS.vison_realtime_v1, image_path=image_path
                 )
+                _ui_print_ai(resp)
                 _speak_fast(resp)
+                history_manager.update_file(speech, resp)
             except Exception as e:
                 print(f"[vision] {e}")
                 _speak_fast("Vision failed. Check camera.")
@@ -565,7 +573,9 @@ while True:
                     f"METADATA: {site_md[:6000]}\n\nQUERY: {speech}",
                     system_prompt="Keep responses very short and concise.",
                 )
+                _ui_print_ai(resp)
                 _speak_fast(resp)
+                history_manager.update_file(speech, resp)
             except Exception as e:
                 print(f"[website] {e}")
                 _speak_fast("Website summarization failed.")
@@ -573,6 +583,7 @@ while True:
         else:
             _ui_print_ai(_def_res)
             _speak_fast(_def_res)
+            history_manager.update_file(speech, _def_res)
 
     else:
         history_manager.store_history(
@@ -668,19 +679,18 @@ while True:
             chat_response = chat_response.strip()
         except Exception as _e:
             print(f"Groq stream failed {_e}, falling back to OpenRouter...")
+            first = True  # reset flag so fallback response is voiced
+            chat_response = ""
             try:
-                if not chat_response:
-                    chat_response = openrouter.generate(history_manager.history + [{"role": "user", "content": speech}], system_prompt=_voice_prompt, stream=False)
+                chat_response = openrouter.generate(history_manager.history + [{"role": "user", "content": speech}], system_prompt=_voice_prompt, stream=False)
             except Exception as _e2:
                 print(f"OpenRouter failed {_e2}, falling back to DeepInfra...")
                 try:
-                    if not chat_response:
-                        chat_response = deepInfra_TEXT.generate(history_manager.history + [{"role": "user", "content": speech}], system_prompt=_voice_prompt, stream=False)
+                    chat_response = deepInfra_TEXT.generate(history_manager.history + [{"role": "user", "content": speech}], system_prompt=_voice_prompt, stream=False)
                 except Exception as _e3:
                     print(f"DeepInfra failed {_e3}, falling back to HuggingFace...")
                     try:
-                        if not chat_response:
-                            chat_response = Hugging_Face_TEXT.generate(speech)
+                        chat_response = Hugging_Face_TEXT.generate(speech)
                     except Exception as _e4:
                         print(f"HuggingFace failed {_e4}")
                         chat_response = "Sorry, my brain is offline. All API providers failed."
@@ -703,25 +713,3 @@ while True:
             except Exception as _tts_e:
                 print(f"TTS failed: {_tts_e}, continuing...")
         history_manager.update_file(speech, chat_response)
-
-        # engine.speak(chat_response, voice="hi-IN-Wavenet-D")
-
-    # ai_response = Phind.generate(speech, stream=False)
-    # ai_response = openrouter.generate(speech, stream=False)
-    # ai_response = hf_api.generate(speech, stream=False)
-    # ai_response = liaobots.generate(speech)
-    # ai_response = groq_web_access.generate(speech)
-    # ai_response = openrouter.generate(speech)
-    # ai_response = deepInfra_TEXT.generate(speech)
-    # sources, ai_response = Blackbox_ai.generate(speech, system_prompt="Keep your Responses very short and concise", web_access=True, stream=False)
-
-    # print("AI >>", ai_response.replace("@web_search", ""))
-    # speak(ai_response)
-
-    # if 'call' in speech:
-    #     speak("Sure Sir. Calling")
-    #     make_call.call()
-
-    # speak("Sure sir, generating images for you")
-    # images_link = deepInfra_IMG.generate(speech)
-    # print(images_link)

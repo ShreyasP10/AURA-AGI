@@ -71,8 +71,20 @@ class ConversationHistoryManager:
         except Exception as e:
             print(f"[error {__file__}] {type(e).__name__}: {e}")
 
-        with open(self.conversation_file, "w") as file:
-            json.dump(data, file, indent=4)
+        os.makedirs(os.path.dirname(self.conversation_file) or ".", exist_ok=True)
+        import tempfile
+        _dir = os.path.dirname(self.conversation_file) or "."
+        _fd, _tmp = tempfile.mkstemp(dir=_dir, suffix=".tmp")
+        try:
+            with os.fdopen(_fd, "w") as file:
+                json.dump(data, file, indent=4)
+            os.replace(_tmp, self.conversation_file)
+        except Exception:
+            try:
+                os.remove(_tmp)
+            except Exception:
+                pass
+            raise
 
         new_entries = []
         if not (self.history and self.history[-1].get("role") == "user" and self.history[-1].get("content") == user_query):
@@ -81,8 +93,15 @@ class ConversationHistoryManager:
         self.store_history(self.history + new_entries)
 
     def load_history(self):
-        with open(self.conversation_file, "r") as file:
-            self.history = json.load(file)
+        if not os.path.exists(self.conversation_file) or os.stat(self.conversation_file).st_size == 0:
+            self.history = []
+            return self.history
+        try:
+            with open(self.conversation_file, "r") as file:
+                self.history = json.load(file)
+        except Exception:
+            self.history = []
+        return self.history
 
     def strip_history_by_word_limit(self, word_limit):
         total_words = 0

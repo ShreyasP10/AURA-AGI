@@ -65,11 +65,14 @@ def generate(
     if response.status_code == 200:
         for line in response.iter_lines(decode_unicode=True, chunk_size=1):
             if line:
-                modified_line = re.sub("data:", "", line)
+                modified_line = line[5:].strip() if line.startswith("data:") else line.strip()
                 try:
                     json_data = json.loads(modified_line)
-                    content = json_data["text"]
-                    with_emoji = content.encode("latin1").decode("utf-8")
+                    content = json_data.get("text", "")
+                    try:
+                        with_emoji = content.encode("latin1").decode("utf-8")
+                    except (UnicodeEncodeError, UnicodeDecodeError):
+                        with_emoji = content
                     if prints:
                         print(with_emoji, end="", flush=True)
                     complete_response += with_emoji

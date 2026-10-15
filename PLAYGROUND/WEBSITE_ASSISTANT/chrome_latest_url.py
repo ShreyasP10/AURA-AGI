@@ -9,8 +9,13 @@ def _read_latest_url(history_path: str, copy_name: str, label: str) -> str:
             f"{label} History not found: {history_path} (Windows only, close browser first if locked)"
         )
 
-    # Destination path for the copy of the history file
-    history_db_path = os.path.join(os.getcwd(), copy_name)
+    import tempfile
+    import uuid
+
+    # Destination path in tempdir to avoid workspace pollution and concurrent file locks
+    history_db_path = os.path.join(
+        tempfile.gettempdir(), f"{copy_name}_{os.getpid()}_{uuid.uuid4().hex[:8]}.db"
+    )
 
     # Copy the history database to a new location
     try:

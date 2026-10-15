@@ -32,20 +32,24 @@ def generate(
     response and returns it as a single string.
     """
 
-    headers = {"User-Agent": ""}
-    # Insert the system prompt at the beginning of the conversation history
-    prompt.insert(0, {"content": system_prompt, "role": "system"})
+    headers = {"User-Agent": "Mozilla/5.0"}
+    if isinstance(prompt, str):
+        message_history = [{"role": "user", "content": prompt}]
+    else:
+        message_history = list(prompt)
+    message_history = [{"content": system_prompt, "role": "system"}] + message_history
+    user_input = message_history[-1]["content"] if message_history else ""
+
     payload = {
         "additional_extension_context": "",
         "allow_magic_buttons": True,
         "is_vscode_extension": True,
-        "message_history": prompt,
+        "message_history": message_history,
         "requested_model": model,
-        "user_input": prompt[-1]["content"],
+        "user_input": user_input,
     }
 
     # Send POST request and stream response
-    # FIX: was "https://https.extension.phind.com/agent/" (double https) -> correct host
     chat_endpoint = "https://extension.phind.com/agent/"
     response = requests.post(
         chat_endpoint, headers=headers, json=payload, stream=True, timeout=30
@@ -54,15 +58,20 @@ def generate(
     # Collect streamed text content
     streaming_text = ""
     for value in response.iter_lines(decode_unicode=True, chunk_size=stream_chunk_size):
-        modified_value = re.sub("data:", "", value)
-        if modified_value:
-            json_modified_value = json.loads(modified_value)
-            try:
+        if not value:
+            continue
+        line = value[5:].strip() if value.startswith("data:") else value.strip()
+        if not line or line == "[DONE]":
+            continue
+        try:
+            json_modified_value = json.loads(line)
+            content = json_modified_value.get("choices", [{}])[0].get("delta", {}).get("content", "")
+            if content:
                 if stream:
-                    print(json_modified_value["choices"][0]["delta"]["content"], end="")
-                streaming_text += json_modified_value["choices"][0]["delta"]["content"]
-            except Exception:
-                continue
+                    print(content, end="", flush=True)
+                streaming_text += content
+        except Exception:
+            continue
 
     return streaming_text
 

@@ -159,3 +159,57 @@ def test_action_expiry_handles_naive_and_aware():
     # Aware string (past)
     aware_past = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
     assert ActionPolicyService._is_expired(aware_past) is True
+
+# --- 14. Alarm overnight rollover ---
+def test_alarm_past_time_rolls_over_to_tomorrow():
+    from TOOLS.SYSTEM_SETTINGS.Alarms import AlarmManager
+    import datetime, tempfile, os
+    mgr = AlarmManager()
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        mgr._alarm_file = f.name
+    try:
+        now = datetime.datetime.now()
+        # Set alarm for 1 hour ago with no date specified
+        past_hour = (now - datetime.timedelta(hours=1)).hour
+        meridiem = "PM" if past_hour >= 12 else "AM"
+        hour_12 = past_hour % 12 or 12
+        res = mgr.set_alarm(hour_12, 0, meridiem)
+        assert res["status"] == "success"
+        # The scheduled date must be tomorrow's date
+        tomorrow = (now + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        assert tomorrow in res["message"]
+    finally:
+        if os.path.exists(mgr._alarm_file):
+            os.remove(mgr._alarm_file)
+
+# --- 15. File finder word boundary preservation ---
+def test_file_finder_query_cleaner():
+    import re
+    def clean_query(query):
+        return re.sub(r"\b(find|search|for|my|the|a|files?)\b", "", query, flags=re.IGNORECASE).strip() or query
+
+    assert clean_query("find my resume") == "resume"
+    assert clean_query("search for dummy_file.txt") == "dummy_file.txt"
+    assert clean_query("finder") == "finder"
+
+# --- 16. Rate limiter enforces sliding window ---
+def test_rate_limiter_blocks_floods():
+    from agent_server.app.main import InMemoryRateLimiter
+    limiter = InMemoryRateLimiter(max_requests=3, window_seconds=60.0)
+    assert limiter.is_allowed("127.0.0.1") is True
+    assert limiter.is_allowed("127.0.0.1") is True
+    assert limiter.is_allowed("127.0.0.1") is True
+    assert limiter.is_allowed("127.0.0.1") is False
+    assert limiter.is_allowed("192.168.1.100") is True
+
+# --- 17. Phind does not mutate caller list ---
+def test_phind_does_not_mutate_caller_list():
+    from BRAIN.AI.TEXT.API import Phind
+    history = [{"role": "user", "content": "hello"}]
+    original = list(history)
+    with patch("requests.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.iter_lines.return_value = [b"data: {\"choices\": [{\"delta\": {\"content\": \"hi\"}}]}"]
+        mock_post.return_value = mock_resp
+        Phind.generate(history, stream=False)
+    assert history == original, "Phind.generate must not mutate caller prompt list"

@@ -147,6 +147,10 @@ class _WhisperListener:
 
     def __init__(self, language="en-IN"):
         self.language = language
+        try:
+            self.mic_index = int(os.environ.get("AURA_MIC_INDEX", "-1"))
+        except ValueError:
+            self.mic_index = -1
 
     def start_recording(self):
         return None
@@ -163,7 +167,7 @@ class _WhisperListener:
         except ValueError:
             _silence = 1500
         text = whisper_offline.listen_vad(
-            lang=lang, silence_ms=_silence, max_s=min(timeout_s, 30)
+            lang=lang, silence_ms=_silence, max_s=min(timeout_s, 30), device_index=self.mic_index
         )
         if isinstance(text, str) and text.strip():
             if prints:
@@ -195,8 +199,8 @@ class _LazyGroq:
     def get_client(self):
         if self._c is None:
             from groq import Groq
-
-            self._c = Groq(api_key=os.environ.get("GROQ_AI"))
+            api_key = os.environ.get("GROQ_AI") or os.environ.get("GROQ_API_KEY")
+            self._c = Groq(api_key=api_key) if api_key else Groq()
         return self._c
 
     def chat(self, *a, **k):
